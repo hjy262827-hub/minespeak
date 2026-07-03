@@ -1371,7 +1371,7 @@
     function addSentence(studentId) {
         const student = appState.students.find(s => s.id === studentId);
         if (student.sentences.length < 6) {
-            student.sentences.push({ en: "New sentence.", cn: "新句子。" });
+            student.sentences.push({ en: "", cn: "" });
             renderTeacherDashboard();
         }
     }
