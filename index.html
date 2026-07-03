@@ -303,15 +303,54 @@
         <section id="page-teacher" class="page-section max-w-4xl mx-auto">
             <div class="flex justify-between items-center mb-8">
                 <h2 class="text-3xl font-cartoon text-slate-800">学生练习管理</h2>
-                <button onclick="saveAllChanges()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-indigo-200 transition btn-press flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    提交所有更改
-                </button>
+                <div class="flex gap-3">
+                    <button onclick="showAddStudentModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-emerald-200 transition btn-press flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        新增学生
+                    </button>
+                    <button onclick="saveAllChanges()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-indigo-200 transition btn-press flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        提交所有更改
+                    </button>
+                </div>
             </div>
 
             <div id="teacher-student-list" class="space-y-6">
+            </div>
+
+            <!-- 新增学生弹窗 -->
+            <div id="add-student-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4">
+                    <h3 class="text-2xl font-cartoon text-slate-800 mb-6 text-center">新增学生</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-sm text-slate-500 mb-1 block">学生姓名</label>
+                            <input id="new-student-name" type="text" class="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-lg focus:border-emerald-400 outline-none" placeholder="例如：Leo">
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-500 mb-1 block">头像缩写（2个字母）</label>
+                            <input id="new-student-avatar" type="text" maxlength="2" class="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-lg focus:border-emerald-400 outline-none uppercase" placeholder="例如：LE">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-sm text-slate-500 mb-1 block">首句英文</label>
+                                <input id="new-student-en" type="text" class="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-400 outline-none" placeholder="例如：I like apples.">
+                            </div>
+                            <div>
+                                <label class="text-sm text-slate-500 mb-1 block">首句中文翻译</label>
+                                <input id="new-student-cn" type="text" class="w-full p-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm focus:border-emerald-400 outline-none" placeholder="例如：我喜欢苹果。">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button onclick="closeAddStudentModal()" class="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition">取消</button>
+                        <button onclick="addNewStudent()" class="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-200 transition btn-press">确认添加</button>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -1348,10 +1387,15 @@
                     <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-lg mr-4">
                         ${student.avatar}
                     </div>
-                    <div>
+                    <div class="flex-1">
                         <h3 class="text-xl font-bold text-slate-800">${student.name}</h3>
                         <p class="text-sm text-slate-500">ID: ${student.id} | 正确率: ${student.stats.accuracy}% | 时长: ${student.stats.time}min</p>
                     </div>
+                    <button onclick="confirmDeleteStudent(${student.id}, '${escapeHtml(student.name)}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition" title="删除学生">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
                 </div>
                 <div id="sentences-container-${student.id}">
                     ${sentencesHTML}
@@ -1381,6 +1425,86 @@
         if (student.sentences.length > 1) {
             student.sentences.splice(index, 1);
             renderTeacherDashboard();
+        }
+    }
+
+    // --- 新增学生 ---
+    function showAddStudentModal() {
+        document.getElementById('add-student-modal').classList.remove('hidden');
+        document.getElementById('new-student-name').value = '';
+        document.getElementById('new-student-avatar').value = '';
+        document.getElementById('new-student-en').value = '';
+        document.getElementById('new-student-cn').value = '';
+        document.getElementById('new-student-name').focus();
+    }
+
+    function closeAddStudentModal() {
+        document.getElementById('add-student-modal').classList.add('hidden');
+    }
+
+    async function addNewStudent() {
+        const name = document.getElementById('new-student-name').value.trim();
+        const avatar = document.getElementById('new-student-avatar').value.trim().toUpperCase();
+        const en = document.getElementById('new-student-en').value.trim();
+        const cn = document.getElementById('new-student-cn').value.trim();
+
+        if (!name || !avatar) {
+            showToast('请填写学生姓名和头像缩写', 'warning');
+            return;
+        }
+        if (avatar.length !== 2) {
+            showToast('头像缩写必须是2个字母', 'warning');
+            return;
+        }
+
+        // 生成新 ID（当前最大 ID + 1）
+        const maxId = appState.students.reduce((max, s) => Math.max(max, s.id), 0);
+        const newId = maxId + 1;
+
+        const newStudent = {
+            id: newId,
+            name,
+            avatar,
+            sentences: en && cn ? [{ en, cn }] : [{ en: '', cn: '' }],
+            stats: { accuracy: 0, time: 0, streak: 0 }
+        };
+
+        // 先保存到云端
+        try {
+            await cloudSaveStudent(newStudent);
+            appState.students.push(newStudent);
+            closeAddStudentModal();
+            renderTeacherDashboard();
+            showToast(`学生 ${name} 已添加并同步到云端！`, 'success');
+        } catch (err) {
+            console.error('新增学生失败:', err);
+            showToast('保存失败，请检查网络', 'warning');
+        }
+    }
+
+    // --- 删除学生 ---
+    async function confirmDeleteStudent(studentId, studentName) {
+        if (confirm(`确定要删除学生「${studentName}」吗？\n\n此操作将删除该学生的所有练习数据和历史记录，且不可恢复。`)) {
+            try {
+                // 从 Supabase 删除
+                const { error } = await supabaseClient.from('students').delete().eq('id', studentId);
+                if (error) {
+                    console.error('删除学生失败:', error);
+                    showToast('删除失败，请重试', 'warning');
+                    return;
+                }
+
+                // 同时删除该学生的练习历史
+                await supabaseClient.from('history').delete().eq('student_id', studentId);
+
+                // 从本地状态移除
+                appState.students = appState.students.filter(s => s.id !== studentId);
+                renderTeacherDashboard();
+                showToast(`学生「${studentName}」已从云端删除`, 'success');
+            } catch (err) {
+                console.error('删除学生异常:', err);
+                showToast('删除失败，请检查网络', 'warning');
+            }
         }
     }
 
