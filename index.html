@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MineSpeak - AI 英语口语练习</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- ECharts -->
+    <script src="https://cdn.staticfile.net/echarts/5.4.3/echarts.min.js"></script>
+
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f9ff;
+            overflow-x: hidden;
+        }
+        .font-cartoon {
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 2s infinite;
+        }
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+        }
+        .toast {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .page-section {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .page-section.active {
+            display: block;
+            opacity: 1;
+        }
+        .word-correct {
+            text-decoration: underline;
+            text-decoration-color: #22c55e;
+            text-decoration-thickness: 3px;
+        }
+        .word-wrong {
+            background-color: #fecaca;
+            color: #b91c1c;
+            border-radius: 4px;
+            padding: 0 2px;
+        }
+        /* API Key 配置面板 */
+        .config-panel {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="text-slate-700 flex flex-col min-h-screen">
+
+    <!-- Navigation Bar -->
+    <nav id="navbar" class="bg-white shadow-md sticky top-0 z-40 hidden transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 flex items-center">
+                        <!-- MineSpeak Logo -->
+                        <svg class="h-8 w-8 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        <span class="ml-2 text-2xl font-cartoon text-indigo-600">MineSpeak</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="navigateTo('page-practice')" id="nav-practice" class="text-gray-600 hover:text-indigo-500 px-3 py-2 rounded-md text-sm font-medium transition hidden">
+                        学生练习
+                    </button>
+                    <button onclick="navigateTo('page-teacher')" id="nav-teacher" class="text-gray-600 hover:text-indigo-500 px-3 py-2 rounded-md text-sm font-medium transition hidden">
+                        老师后台
+                    </button>
+                    <button onclick="navigateTo('page-stats')" id="nav-stats" class="text-gray-600 hover:text-indigo-500 px-3 py-2 rounded-md text-sm font-medium transition hidden">
+                        数据统计
+                    </button>
+                    <button onclick="logout()" class="bg-red-100 text-red-600 hover:bg-red-200 px-4 py-2 rounded-full text-sm font-bold transition btn-press">
+                        退出
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8 relative">
+
+        <!-- 1. Login Page -->
+        <section id="page-login" class="page-section active flex flex-col items-center justify-center min-h-[80vh]">
+            <div class="text-center mb-10">
+                <h1 class="text-5xl font-cartoon text-indigo-600 mb-2">MineSpeak</h1>
+                <p class="text-xl text-slate-500">AI-Powered English Speaking Practice</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-3xl">
+                <!-- Student Card -->
+                <div onclick="showStudentPicker()" class="bg-white p-8 rounded-3xl shadow-xl border-4 border-indigo-100 hover:border-indigo-400 hover:shadow-2xl transition cursor-pointer flex flex-col items-center group btn-press">
+                    <div class="w-24 h-24 bg-indigo-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-indigo-200 transition">
+                        <svg class="w-12 h-12 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">我是学生</h2>
+                    <p class="text-slate-500">AI 驱动 · 真实口语测评</p>
+                </div>
+
+                <!-- Teacher Card -->
+                <div onclick="login('teacher')" class="bg-white p-8 rounded-3xl shadow-xl border-4 border-emerald-100 hover:border-emerald-400 hover:shadow-2xl transition cursor-pointer flex flex-col items-center group btn-press">
+                    <div class="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mb-6 group-hover:bg-emerald-200 transition">
+                        <svg class="w-12 h-12 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">我是老师</h2>
+                    <p class="text-slate-500">管理学生 · 查看数据</p>
+                </div>
+            </div>
+
+            <!-- Student Picker Modal -->
+            <div id="student-picker-overlay" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+                <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4">
+                    <h3 class="text-2xl font-cartoon text-slate-800 mb-2 text-center">选择你的名字</h3>
+                    <p class="text-slate-500 text-sm text-center mb-6">选择后进入练习，数据实时同步到云端</p>
+                    <div id="student-picker-list" class="space-y-3 max-h-64 overflow-y-auto">
+                    </div>
+                    <button onclick="closeStudentPicker()" class="mt-4 w-full py-2 text-slate-500 hover:text-slate-700 transition text-sm">取消</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Student Practice Page -->
+        <section id="page-practice" class="page-section max-w-2xl mx-auto">
+            <div class="mb-6 flex justify-between items-center">
+                <div class="flex items-center">
+                    <div id="current-student-avatar" class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm mr-3"></div>
+                    <span id="current-student-name" class="text-lg font-bold text-slate-700"></span>
+                </div>
+                <span id="current-student-stats" class="text-sm text-slate-500"></span>
+            </div>
+
+            <div class="bg-white rounded-3xl shadow-lg overflow-hidden relative">
+                <div class="absolute top-0 right-0 bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-bl-xl z-10">
+                    今日任务
+                </div>
+
+                <div class="p-8 text-center">
+                    <!-- English Sentence -->
+                    <div class="mb-8">
+                        <p id="practice-sentence" class="text-4xl md:text-5xl font-cartoon text-slate-800 leading-tight min-h-[80px] flex items-center justify-center"></p>
+                    </div>
+
+                    <!-- Audio Controls -->
+                    <div class="flex justify-center space-x-6 mb-8">
+                        <button onclick="playAudio()" class="w-16 h-16 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 rounded-full flex items-center justify-center transition btn-press" title="播放标准发音">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            </svg>
+                        </button>
+                        <button id="mic-btn" onclick="toggleRecording()" class="w-16 h-16 bg-red-100 hover:bg-red-200 text-red-600 rounded-full flex items-center justify-center transition btn-press relative" title="AI 口语测评">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                            <div id="mic-indicator" class="absolute inset-0 rounded-full border-4 border-red-500 opacity-0"></div>
+                        </button>
+                    </div>
+
+                    <!-- Recording Timer & Status -->
+                    <div id="pronunciation-hint" class="text-sm text-slate-500 mb-4 h-5">点击麦克风开始跟读</div>
+
+                    <!-- Recording Waveform -->
+                    <div id="waveform-container" class="hidden mb-4 flex justify-center items-center space-x-1 h-10">
+                        <div class="wave-bar w-1.5 bg-indigo-400 rounded-full" style="animation: wave 0.6s ease-in-out infinite;"></div>
+                        <div class="wave-bar w-1.5 bg-indigo-400 rounded-full" style="animation: wave 0.6s ease-in-out 0.1s infinite;"></div>
+                        <div class="wave-bar w-1.5 bg-indigo-400 rounded-full" style="animation: wave 0.6s ease-in-out 0.2s infinite;"></div>
+                        <div class="wave-bar w-1.5 bg-indigo-400 rounded-full" style="animation: wave 0.6s ease-in-out 0.3s infinite;"></div>
+                        <div class="wave-bar w-1.5 bg-indigo-400 rounded-full" style="animation: wave 0.6s ease-in-out 0.4s infinite;"></div>
+                        <div class="wave-bar w-1.5 bg-indigo-400 rounded-full" style="animation: wave 0.6s ease-in-out 0.5s infinite;"></div>
+                    </div>
+                    <style>
+                        @keyframes wave {
+                            0%, 100% { height: 8px; }
+                            50% { height: 32px; }
+                        }
+                    </style>
+
+                    <!-- Translation Input -->
+                    <div class="relative mb-6">
+                        <textarea id="translation-input" rows="3" class="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 text-lg focus:border-indigo-400 focus:bg-white outline-none transition resize-none" placeholder="请输入中文翻译..."></textarea>
+                        <div class="absolute bottom-3 right-3 text-slate-400 text-sm">
+                            <svg class="w-5 h-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-center space-x-4">
+                        <button onclick="resetPractice()" class="px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition btn-press">
+                            重新开始
+                        </button>
+                        <button onclick="checkAnswer()" class="px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition btn-press">
+                            检查答案
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Practice Result Page -->
+        <section id="page-result" class="page-section max-w-2xl mx-auto">
+            <div class="bg-white rounded-3xl shadow-lg p-8 text-center">
+                <h2 class="text-3xl font-cartoon text-slate-800 mb-6">练习结果</h2>
+
+                <!-- Score Circle -->
+                <div class="relative w-40 h-40 mx-auto mb-8 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90">
+                        <circle cx="80" cy="80" r="70" stroke="#f1f5f9" stroke-width="12" fill="none" />
+                        <circle id="score-circle" cx="80" cy="80" r="70" stroke="#22c55e" stroke-width="12" fill="none" stroke-dasharray="440" stroke-dashoffset="440" class="transition-all duration-1000 ease-out" />
+                    </svg>
+                    <div class="absolute text-4xl font-bold text-slate-800" id="score-text">0</div>
+                </div>
+
+                <p id="feedback-message" class="text-xl text-slate-600 mb-8 font-bold">太棒了！</p>
+
+                <!-- Analysis Area -->
+                <div class="bg-slate-50 rounded-2xl p-6 mb-8 text-left">
+                    <h3 class="font-bold text-slate-700 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        答案分析
+                    </h3>
+
+                    <div class="mb-4">
+                        <p class="text-sm text-slate-500 mb-1">标准翻译:</p>
+                        <p id="result-correct-cn" class="text-lg text-slate-800 font-medium"></p>
+                    </div>
+
+                    <div class="mb-4">
+                        <p class="text-sm text-slate-500 mb-1">你的输入:</p>
+                        <p id="result-user-cn" class="text-lg"></p>
+                    </div>
+
+                    <!-- Pronunciation Detail -->
+                    <div class="mb-4 bg-white p-3 rounded-lg border">
+                        <p class="text-sm text-slate-500 mb-2">发音评分详情:</p>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <p class="text-xs text-slate-400">准确度</p>
+                                <p class="text-lg font-bold text-indigo-600" id="score-accuracy">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">流利度</p>
+                                <p class="text-lg font-bold text-emerald-600" id="score-fluency">-</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-400">完整度</p>
+                                <p class="text-lg font-bold text-amber-600" id="score-completeness">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start bg-amber-50 p-3 rounded-lg border border-amber-100">
+                        <svg class="w-5 h-5 text-amber-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        <p id="result-suggestion" class="text-sm text-amber-800">发音很标准，继续保持！</p>
+                    </div>
+                </div>
+
+                <button onclick="retryPractice()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-emerald-200 transition btn-press">
+                    再练一次
+                </button>
+            </div>
+        </section>
+
+        <!-- 4. Teacher Dashboard Page -->
+        <section id="page-teacher" class="page-section max-w-4xl mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-cartoon text-slate-800">学生练习管理</h2>
+                <button onclick="saveAllChanges()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-indigo-200 transition btn-press flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    提交所有更改
+                </button>
+            </div>
+
+            <div id="teacher-student-list" class="space-y-6">
+            </div>
+        </section>
+
+        <!-- 5. Data Statistics Page -->
+        <section id="page-stats" class="page-section max-w-6xl mx-auto">
+            <h2 class="text-3xl font-cartoon text-slate-800 mb-8 text-center">学习数据统计</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl shadow-md border-l-4 border-indigo-500">
+                    <p class="text-slate-500 text-sm">平均练习时长</p>
+                    <p class="text-3xl font-bold text-slate-800 mt-2" id="stat-avg-time">0 min</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-md border-l-4 border-emerald-500">
+                    <p class="text-slate-500 text-sm">平均正确率</p>
+                    <p class="text-3xl font-bold text-slate-800 mt-2" id="stat-avg-accuracy">0%</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-md border-l-4 border-amber-500">
+                    <p class="text-slate-500 text-sm">本周总打卡</p>
+                    <p class="text-3xl font-bold text-slate-800 mt-2" id="stat-total-streak">0</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-3xl shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4">学生正确率对比</h3>
+                    <div id="chart-accuracy" class="w-full h-80"></div>
+                </div>
+                <div class="bg-white p-6 rounded-3xl shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4">学生练习时长对比</h3>
+                    <div id="chart-time" class="w-full h-80"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-3xl shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        正确率排名
+                    </h3>
+                    <ul id="list-accuracy" class="space-y-3"></ul>
+                </div>
+                <div class="bg-white p-6 rounded-3xl shadow-lg">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        练习时长排名
+                    </h3>
+                    <ul id="list-time" class="space-y-3"></ul>
+                </div>
+            </div>
+        </section>
+
+
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-8">
+        <div class="container mx-auto text-center text-slate-500 text-sm">
+            <p>&copy; 2026 MineSpeak AI English Learning. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- ==================== JavaScript ==================== -->
+    <script>
+    // =============================================
+    // MineSpeak - AI English Speaking Practice
+    // 使用 Supabase 云数据库实现多端同步
+    // =============================================
+
+    // --- Supabase 初始化 ---
+    const SUPABASE_URL = 'https://lceudnohqjqfrgkahanq.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZXVkbm9ocWpxZnJna2FoYW5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDU1MjAsImV4cCI6MjA5ODYyMTUyMH0.gzwrxqoKD0jfriAmijpK1ur-ai12ndE3d8LTnYp01ZI';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // --- 云端数据操作 ---
+    async function cloudGetStudents() {
+        const { data, error } = await supabase.from('students').select('*').order('id');
+        if (error) { console.error('获取学生列表失败:', error); return []; }
+        // 确保 JSONB 字段正确解析
+        return data.map(s => ({
+            ...s,
+            sentences: typeof s.sentences === 'string' ? JSON.parse(s.sentences) : s.sentences,
+            stats: typeof s.stats === 'string' ? JSON.parse(s.stats) : s.stats
+        }));
+    }
+
+    async function cloudSaveStudent(student) {
+        const { error } = await supabase.from('students').upsert({
+            id: student.id,
+            name: student.name,
+            avatar: student.avatar,
+            sentences: student.sentences,
+            stats: student.stats
+        });
+        if (error) console.error('保存学生失败:', error);
+    }
+
+    async function cloudSaveHistory(record) {
+        const { error } = await supabase.from('history').insert({
+            student_id: record.studentId,
+            timestamp: record.timestamp,
+            sentence_en: record.sentenceEn,
+            correct_cn: record.correctCN,
+            user_cn: record.userCN,
+            total_score: record.totalScore,
+            pron_score: record.pronScore,
+            trans_score: record.transScore
+        });
+        if (error) console.error('保存练习记录失败:', error);
+    }
+
+    // --- 讯飞 API 凭证 ---
+    const defaultConfig = {
+        provider: 'xfyun',
+        xfyun: { appId: '4cb576c4', apiKey: '9ae22d69c2ee898b6633a5f844feca20', apiSecret: 'ZTE4ODEyODMxNjBjNGQzZjY4N2I2ZTM0' }
+    };
+
+    // --- App State ---
+    let appState = {
+        role: null,
+        currentStudentId: null,
+        currentSentenceIndex: 0,
+        students: [],
+        tempPronunciationScore: null,
+        tempPronunciationDetail: null,
+        practiceResult: null,
+        apiConfig: defaultConfig
+    };
+
+    // =============================================
+    // 科大讯飞 ISE 语音评测集成
+    // 使用 WebSocket 直连，浏览器端完成 HMAC-SHA256 签名
+    // =============================================
+
+    // --- Audio Recording (AudioContext + PCM resampling) ---
+    let audioContext = null;
+    let mediaStreamSource = null;
+    let scriptProcessor = null;
+    let audioStream = null;
+    let pcmBuffers = [];  // 收集 PCM 16kHz 16bit 数据
+    let isRecording = false;
+    let recordingTimer = null;
+    let recordingSeconds = 0;
+
+    async function startRealRecording() {
+        try {
+            audioStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    sampleRate: 16000,
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true
+                }
+            });
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            mediaStreamSource = audioContext.createMediaStreamSource(audioStream);
+
+            // 重采样到 16kHz 单声道
+            scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+            pcmBuffers = [];
+
+            scriptProcessor.onaudioprocess = (event) => {
+                if (!isRecording) return;
+                const input = event.inputBuffer.getChannelData(0);
+                // Float32 [-1,1] → Int16 PCM
+                const pcm = new Int16Array(input.length);
+                for (let i = 0; i < input.length; i++) {
+                    const s = Math.max(-1, Math.min(1, input[i]));
+                    pcm[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                pcmBuffers.push(pcm);
+            };
+
+            mediaStreamSource.connect(scriptProcessor);
+            scriptProcessor.connect(audioContext.destination);
+            isRecording = true;
+
+            // Timer
+            recordingSeconds = 0;
+            recordingTimer = setInterval(() => {
+                recordingSeconds++;
+                const hint = document.getElementById('pronunciation-hint');
+                hint.textContent = `正在录音... ${recordingSeconds}s`;
+            }, 1000);
+
+            // UI
+            document.getElementById('waveform-container').classList.remove('hidden');
+            const indicator = document.getElementById('mic-indicator');
+            indicator.classList.add('animate-pulse-ring');
+            indicator.classList.remove('opacity-0');
+
+            return true;
+        } catch (err) {
+            console.error('麦克风访问失败:', err);
+            showToast('无法访问麦克风，请检查权限设置', 'warning');
+            return false;
+        }
+    }
+
+    function stopRealRecording() {
+        return new Promise((resolve) => {
+            if (!isRecording) { resolve(null); return; }
+            isRecording = false;
+
+            // 停止音频处理
+            if (scriptProcessor) {
+                scriptProcessor.disconnect();
+                scriptProcessor = null;
+            }
+            if (mediaStreamSource) {
+                mediaStreamSource.disconnect();
+                mediaStreamSource = null;
+            }
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close().catch(() => {});
+                audioContext = null;
+            }
+            if (audioStream) {
+                audioStream.getTracks().forEach(t => t.stop());
+                audioStream = null;
+            }
+
+            // 清除计时器
+            if (recordingTimer) { clearInterval(recordingTimer); recordingTimer = null; }
+
+            // 合并所有 PCM 数据
+            let totalLen = 0;
+            for (const buf of pcmBuffers) totalLen += buf.length;
+            const merged = new Int16Array(totalLen);
+            let offset = 0;
+            for (const buf of pcmBuffers) {
+                merged.set(buf, offset);
+                offset += buf.length;
+            }
+
+            // UI
+            document.getElementById('waveform-container').classList.add('hidden');
+            const indicator = document.getElementById('mic-indicator');
+            indicator.classList.remove('animate-pulse-ring');
+            indicator.classList.add('opacity-0');
+
+            resolve(merged.buffer); // 返回 ArrayBuffer
+        });
+    }
+
+    // --- 科大讯飞 WebSocket 鉴权 ---
+    async function generateXfyunAuth(apiKey, apiSecret) {
+        const host = 'ise-api.xfyun.cn';
+        const date = new Date().toUTCString(); // RFC1123
+        const requestLine = 'GET /v2/open-ise HTTP/1.1';
+
+        const signatureOrigin = `host: ${host}\ndate: ${date}\n${requestLine}`;
+
+        // HMAC-SHA256 with Web Crypto API
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(apiSecret);
+        const messageData = encoder.encode(signatureOrigin);
+
+        const cryptoKey = await crypto.subtle.importKey(
+            'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+        );
+        const signatureBuf = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+        const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBuf)));
+
+        const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signature}"`;
+        const authorization = btoa(authorizationOrigin);
+
+        return { host, date, authorization };
+    }
+
+    // --- 科大讯飞 ISE 评测 ---
+    async function evaluateWithXfyun(pcmArrayBuffer, referenceText) {
+        const cfg = appState.apiConfig.xfyun;
+        if (!cfg.appId || !cfg.apiKey || !cfg.apiSecret) {
+            return { pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0, recognizedText: '', error: '讯飞 API 未配置' };
+        }
+
+        const auth = await generateXfyunAuth(cfg.apiKey, cfg.apiSecret);
+        const wsUrl = `wss://ise-api.xfyun.cn/v2/open-ise?host=${auth.host}&date=${encodeURIComponent(auth.date)}&authorization=${encodeURIComponent(auth.authorization)}`;
+
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(wsUrl);
+            let resultReceived = false;
+            let finalResult = null;
+
+            const timeout = setTimeout(() => {
+                if (!resultReceived) {
+                    ws.close();
+                    resolve({ pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0, recognizedText: '', error: '评测超时' });
+                }
+            }, 15000);
+
+            ws.onopen = () => {
+                // 第一步：发送业务参数
+                const textWithBOM = '\uFEFF' + referenceText;
+                const params = {
+                    common: { app_id: cfg.appId },
+                    business: {
+                        sub: 'ise',
+                        ent: 'en_vip',
+                        category: 'read_sentence',
+                        cmd: 'ssb',
+                        text: textWithBOM,
+                        ttp_skip: true,
+                        aue: 'raw',
+                        auf: 'audio/L16;rate=16000',
+                        rst: 'entirety',
+                        extra_ability: 'multi_dimension'
+                    },
+                    data: { status: 0 }
+                };
+                ws.send(JSON.stringify(params));
+
+                // 第二步：分帧发送 PCM 音频
+                const pcm = new Int16Array(pcmArrayBuffer);
+                const frameSize = 1280; // 40ms at 16kHz
+                const totalFrames = Math.ceil(pcm.length / frameSize);
+
+                for (let i = 0; i < totalFrames; i++) {
+                    const start = i * frameSize;
+                    const end = Math.min(start + frameSize, pcm.length);
+                    const frame = pcm.slice(start, end);
+                    const base64 = arrayBufferToBase64(frame.buffer);
+
+                    let aus;
+                    if (i === 0) aus = 1;
+                    else if (i === totalFrames - 1) aus = 4;
+                    else aus = 2;
+
+                    const status = i === totalFrames - 1 ? 2 : 1;
+
+                    ws.send(JSON.stringify({
+                        business: { cmd: 'auw', aus },
+                        data: { status, data: status === 2 ? '' : base64 }
+                    }));
+                }
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.code !== 0) {
+                        if (!resultReceived) {
+                            resultReceived = true;
+                            clearTimeout(timeout);
+                            ws.close();
+                            resolve({ pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0, recognizedText: '', error: `讯飞错误: ${msg.code} ${msg.message || msg.desc || ''}` });
+                        }
+                        return;
+                    }
+
+                    // 解析评测结果
+                    const data = msg.data;
+                    if (data && data.status === 2) {
+                        // 最终结果
+                        const result = parseXfyunResult(data, referenceText);
+                        if (result && !resultReceived) {
+                            resultReceived = true;
+                            finalResult = result;
+                            clearTimeout(timeout);
+                            ws.close();
+                            resolve(finalResult);
+                        }
+                    }
+                } catch (e) {
+                    console.error('解析讯飞结果失败:', e);
+                }
+            };
+
+            ws.onerror = (err) => {
+                if (!resultReceived) {
+                    resultReceived = true;
+                    clearTimeout(timeout);
+                    resolve({ pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0, recognizedText: '', error: 'WebSocket 连接失败' });
+                }
+            };
+
+            ws.onclose = () => {
+                if (!resultReceived) {
+                    resultReceived = true;
+                    clearTimeout(timeout);
+                    if (finalResult) {
+                        resolve(finalResult);
+                    } else {
+                        resolve({ pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0, recognizedText: '', error: '未收到评测结果' });
+                    }
+                }
+            };
+        });
+    }
+
+    function parseXfyunResult(data, referenceText) {
+        try {
+            // 讯飞流式版返回：data.data 是 Base64 编码的 XML
+            const rawData = data?.data;
+            if (!rawData || typeof rawData !== 'string') {
+                return { pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0, recognizedText: '', error: '无效的评测数据' };
+            }
+
+            // Base64 解码 → XML
+            const xmlStr = atob(rawData);
+
+            // 用正则提取分数（XML 属性都在 read_sentence 标签上）
+            const getScore = (name) => {
+                const regex = new RegExp(`${name}=\"([0-9.]+)\"`, 'i');
+                const match = xmlStr.match(regex);
+                return match ? parseFloat(match[1]) : 0;
+            };
+
+            let totalScore = getScore('total_score');
+            let accuracyScore = getScore('accuracy_score');
+            let fluencyScore = getScore('fluency_score');
+            let integrityScore = getScore('integrity_score');
+            let standardScore = getScore('standard_score');
+
+            // 检查 is_rejected
+            const isRejected = xmlStr.includes('is_rejected="true"');
+            if (isRejected) {
+                return { pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0, recognizedText: '', error: '检测到乱读，请重新朗读' };
+            }
+
+            // 提取识别文本（从 word 标签的 content 属性）
+            const wordMatches = xmlStr.matchAll(/<word[^>]*content="([^"]*)"[^>]*>/g);
+            const words = [];
+            for (const m of wordMatches) words.push(m[1]);
+            const recognizedText = words.join(' ');
+
+            // 分数归一化到 0-100
+            const norm = (v) => Math.round(Math.min(100, Math.max(0, v)));
+            totalScore = norm(totalScore);
+            accuracyScore = norm(accuracyScore);
+            fluencyScore = norm(fluencyScore);
+            integrityScore = norm(integrityScore || 100);
+
+            return {
+                pronunciation: totalScore || Math.round((accuracyScore + fluencyScore) / 2),
+                accuracy: accuracyScore || totalScore,
+                fluency: fluencyScore || totalScore,
+                completeness: integrityScore,
+                recognizedText,
+                error: null
+            };
+        } catch (e) {
+            console.error('解析讯飞评测结果异常:', e, data);
+            return {
+                pronunciation: 0, accuracy: 0, fluency: 0, completeness: 0,
+                recognizedText: '', error: '结果解析失败: ' + e.message
+            };
+        }
+    }
+
+    // --- 离线模式（浏览器本地识别） ---
+    async function evaluateWithWebSpeech(audioBlob, referenceText) {
+        return new Promise((resolve) => {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                resolve({
+                    pronunciation: Math.floor(Math.random() * 10) + 78,
+                    accuracy: 80, fluency: 78, completeness: 90,
+                    recognizedText: '', error: '浏览器不支持语音识别'
+                });
+                return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 3;
+            let hasResult = false;
+
+            recognition.onresult = (event) => {
+                hasResult = true;
+                const transcript = event.results[0][0].transcript;
+                const confidence = event.results[0][0].confidence;
+                const similarity = stringSimilarity(transcript.toLowerCase(), referenceText.toLowerCase());
+                const score = Math.min(100, Math.floor(similarity * 60 + confidence * 40));
+                resolve({
+                    pronunciation: score, accuracy: Math.floor(similarity * 100),
+                    fluency: Math.floor(confidence * 80 + 15), completeness: Math.floor((transcript.length / referenceText.length) * 100),
+                    recognizedText: transcript, error: null
+                });
+            };
+            recognition.onerror = () => {
+                if (!hasResult) resolve({ pronunciation: 78, accuracy: 78, fluency: 75, completeness: 90, recognizedText: '', error: '识别失败' });
+            };
+            recognition.onnomatch = () => {
+                if (!hasResult) resolve({ pronunciation: 75, accuracy: 75, fluency: 70, completeness: 90, recognizedText: '', error: '未识别到语音' });
+            };
+            const audio = new Audio(URL.createObjectURL(audioBlob));
+            audio.onended = () => recognition.stop();
+            recognition.start();
+            audio.play().catch(() => setTimeout(() => recognition.stop(), 3000));
+            setTimeout(() => { if (!hasResult) { recognition.stop(); resolve({ pronunciation: 78, accuracy: 78, fluency: 75, completeness: 92, recognizedText: '', error: '超时' }); } }, 5000);
+        });
+    }
+
+    // --- 统一评测入口 ---
+    async function evaluateSpeech(pcmData, referenceText, audioBlob) {
+        const provider = appState.apiConfig?.provider || 'xfyun';
+
+        if (provider === 'xfyun') {
+            return evaluateWithXfyun(pcmData, referenceText);
+        } else {
+            return evaluateWithWebSpeech(audioBlob, referenceText);
+        }
+    }
+
+    // --- Helper: ArrayBuffer to Base64 ---
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+    }
+
+    // --- Helper: PCM to WAV (for offline mode fallback) ---
+    function pcmToWav(pcmData, sampleRate, numChannels, bitDepth) {
+        const bytesPerSample = bitDepth / 8;
+        const blockAlign = numChannels * bytesPerSample;
+        const byteRate = sampleRate * blockAlign;
+        const dataSize = pcmData.byteLength;
+        const headerSize = 44;
+        const buffer = new ArrayBuffer(headerSize + dataSize);
+        const view = new DataView(buffer);
+
+        // RIFF header
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + dataSize, true);
+        writeString(view, 8, 'WAVE');
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, byteRate, true);
+        view.setUint16(32, blockAlign, true);
+        view.setUint16(34, bitDepth, true);
+        writeString(view, 36, 'data');
+        view.setUint32(40, dataSize, true);
+
+        // PCM data
+        const pcmView = new Uint8Array(pcmData);
+        const outView = new Uint8Array(buffer);
+        outView.set(pcmView, headerSize);
+
+        return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    function writeString(view, offset, str) {
+        for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i));
+        }
+    }
+
+    // --- String similarity (Levenshtein-based) ---
+    function stringSimilarity(s1, s2) {
+        if (!s1 || !s2) return 0;
+        const longer = s1.length > s2.length ? s1 : s2;
+        const shorter = s1.length > s2.length ? s2 : s1;
+        if (longer.length === 0) return 1.0;
+
+        const editDistance = levenshteinDistance(longer, shorter);
+        return (longer.length - editDistance) / longer.length;
+    }
+
+    function levenshteinDistance(s1, s2) {
+        const m = s1.length, n = s2.length;
+        const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+        for (let i = 1; i <= m; i++) {
+            for (let j = 1; j <= n; j++) {
+                if (s1[i - 1] === s2[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1];
+                } else {
+                    dp[i][j] = Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]) + 1;
+                }
+            }
+        }
+        return dp[m][n];
+    }
+
+    // --- Smart Chinese Semantic Matching ---
+    function smartChineseMatch(userInput, correctCN) {
+        const u = userInput.trim().replace(/\s+/g, '');
+        const c = correctCN.trim().replace(/\s+/g, '');
+
+        // 1. Exact match
+        if (u === c) return { isCorrect: true, score: 100, detail: '完全正确' };
+
+        // 2. Punctuation-normalized match
+        const normalizePunct = (s) => s.replace(/[，。！？、；：""''（）【】《》…—\-,.!?;:'"()\[\]{}]/g, '');
+        const uNorm = normalizePunct(u);
+        const cNorm = normalizePunct(c);
+        if (uNorm === cNorm) return { isCorrect: true, score: 95, detail: '正确（标点差异）' };
+
+        // 3. Key character overlap
+        const uChars = new Set(uNorm.split(''));
+        const cChars = new Set(cNorm.split(''));
+        const intersection = [...uChars].filter(ch => cChars.has(ch));
+        const union = new Set([...uChars, ...cChars]);
+        const jaccardSimilarity = intersection.length / union.size;
+
+        // 4. Character-level edit distance similarity
+        const editSim = 1 - levenshteinDistance(uNorm, cNorm) / Math.max(uNorm.length, cNorm.length);
+
+        // 5. Check if one contains the other
+        const contains = uNorm.includes(cNorm) || cNorm.includes(uNorm);
+
+        // 6. Keyword-based matching
+        const keywords = cNorm.replace(/[的了着过吗呢吧啊呀之以其而于与及和或但若虽所被把到在从向对当为上下来去出进回开]/g, '');
+        const keyChars = new Set(keywords.split(''));
+        const keyMatch = [...keyChars].filter(ch => uNorm.includes(ch)).length / keyChars.size;
+
+        // Combined score
+        const combinedScore = (jaccardSimilarity * 0.3 + editSim * 0.4 + (contains ? 0.2 : 0) + keyMatch * 0.1);
+        const isCorrect = combinedScore > 0.75;
+
+        let detail;
+        if (combinedScore > 0.95) detail = '翻译基本正确';
+        else if (combinedScore > 0.85) detail = '翻译大致正确，有细微差异';
+        else if (combinedScore > 0.75) detail = '意思接近，但表达不够准确';
+        else if (combinedScore > 0.6) detail = '部分正确，请对照标准翻译';
+        else detail = '与标准翻译差异较大';
+
+        return {
+            isCorrect,
+            score: Math.floor(combinedScore * 100),
+            detail
+        };
+    }
+
+    // --- Navigation ---
+    function navigateTo(pageId) {
+        document.querySelectorAll('.page-section').forEach(el => {
+            el.classList.remove('active');
+            setTimeout(() => {
+                if (!el.classList.contains('active')) el.style.display = 'none';
+            }, 300);
+        });
+
+        const target = document.getElementById(pageId);
+        if (!target) return;
+        target.style.display = 'block';
+        setTimeout(() => target.classList.add('active'), 10);
+
+        if (pageId === 'page-practice') {
+            refreshStudentData();
+        } else if (pageId === 'page-teacher') {
+            refreshAllData().then(() => renderTeacherDashboard());
+        } else if (pageId === 'page-stats') {
+            refreshAllData().then(() => renderStats());
+        }
+    }
+
+    async function refreshAllData() {
+        appState.students = await cloudGetStudents();
+    }
+
+    async function refreshStudentData() {
+        appState.students = await cloudGetStudents();
+        renderCurrentSentence();
+    }
+
+    // --- Student Picker ---
+    async function showStudentPicker() {
+        const students = await cloudGetStudents();
+        const list = document.getElementById('student-picker-list');
+        list.innerHTML = students.map(s => `
+            <div onclick="loginAsStudent(${s.id})" class="p-4 bg-slate-50 hover:bg-indigo-50 rounded-xl cursor-pointer transition flex items-center border-2 border-transparent hover:border-indigo-300">
+                <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold mr-4">${s.avatar}</div>
+                <div>
+                    <p class="font-bold text-slate-800">${s.name}</p>
+                    <p class="text-xs text-slate-500">正确率 ${s.stats.accuracy}% · 练习 ${s.stats.time}min</p>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('student-picker-overlay').classList.remove('hidden');
+    }
+
+    function closeStudentPicker() {
+        document.getElementById('student-picker-overlay').classList.add('hidden');
+    }
+
+    function loginAsStudent(studentId) {
+        closeStudentPicker();
+        appState.students = []; // 先清空，后面会从云端加载
+        login('student');
+        appState.currentStudentId = studentId;
+        navigateTo('page-practice');
+    }
+
+    function login(role) {
+        appState.role = role;
+        document.getElementById('navbar').classList.remove('hidden');
+
+        if (role === 'student') {
+            document.getElementById('nav-practice').classList.remove('hidden');
+            document.getElementById('nav-teacher').classList.add('hidden');
+            document.getElementById('nav-stats').classList.add('hidden');
+            showToast('欢迎回来，同学！', 'success');
+        } else {
+            document.getElementById('nav-practice').classList.add('hidden');
+            document.getElementById('nav-teacher').classList.remove('hidden');
+            document.getElementById('nav-stats').classList.remove('hidden');
+            navigateTo('page-teacher');
+            showToast('欢迎进入老师后台', 'info');
+        }
+    }
+
+    function logout() {
+        appState.role = null;
+        appState.currentStudentId = null;
+        document.getElementById('navbar').classList.add('hidden');
+        navigateTo('page-login');
+        showToast('已安全退出', 'info');
+    }
+
+    // --- Student Practice ---
+    function renderCurrentSentence() {
+        const student = appState.students.find(s => s.id === appState.currentStudentId);
+        if (!student) return;
+
+        // 更新顶部学生信息
+        document.getElementById('current-student-avatar').textContent = student.avatar;
+        document.getElementById('current-student-name').textContent = student.name;
+        document.getElementById('current-student-stats').textContent = `正确率 ${student.stats.accuracy}% · 练习 ${student.stats.time}min`;
+
+        if (appState.currentSentenceIndex >= student.sentences.length) {
+            appState.currentSentenceIndex = 0;
+        }
+
+        const sentence = student.sentences[appState.currentSentenceIndex];
+        document.getElementById('practice-sentence').textContent = sentence.en;
+        document.getElementById('translation-input').value = '';
+        document.getElementById('pronunciation-hint').textContent = '点击麦克风开始跟读';
+        document.getElementById('pronunciation-hint').className = 'text-sm text-slate-500 mb-4 h-5';
+        appState.tempPronunciationScore = null;
+        appState.tempPronunciationDetail = null;
+    }
+
+    // --- TTS: Google Translate 自然美式发音 ---
+    let audioPlayer = null;
+
+    function playAudio() {
+        const text = document.getElementById('practice-sentence').textContent;
+        if (!text) return;
+
+        // Stop any previous playback
+        if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer = null;
+        }
+        window.speechSynthesis.cancel();
+
+        // Use Google Translate TTS for natural-sounding American English
+        // This produces much better audio than browser SpeechSynthesis
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=en-US&client=tw-ob`;
+
+        audioPlayer = new Audio(url);
+        audioPlayer.playbackRate = 0.85; // Slightly slower for learners
+        audioPlayer.play().catch(() => {
+            // Fallback: if Google TTS fails (e.g. blocked by CORS/network),
+            // use browser SpeechSynthesis with best available voice
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.8;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+
+            // Pick the most natural-sounding English voice
+            const voices = speechSynthesis.getVoices();
+            const preferred = voices.find(v =>
+                v.lang === 'en-US' && v.name.includes('Samantha')
+            ) || voices.find(v =>
+                v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Natural'))
+            ) || voices.find(v =>
+                v.lang.startsWith('en-US')
+            ) || voices.find(v =>
+                v.lang.startsWith('en')
+            );
+            if (preferred) utterance.voice = preferred;
+
+            speechSynthesis.speak(utterance);
+        });
+
+        showToast('🔊 正在播放标准美式发音...', 'info');
+    }
+
+    // --- Real Recording with AI Evaluation ---
+    let lastAudioBlob = null; // 保留一份 blob 用于离线模式
+
+    async function toggleRecording() {
+        if (isRecording) {
+            // Stop recording → get PCM ArrayBuffer
+            const pcmData = await stopRealRecording();
+            const hint = document.getElementById('pronunciation-hint');
+
+            if (pcmData && pcmData.byteLength > 0) {
+                hint.textContent = '正在 AI 评估发音...';
+                hint.className = 'text-sm text-indigo-500 font-bold mb-4 h-5 animate-pulse';
+
+                const sentence = document.getElementById('practice-sentence').textContent;
+
+                // 同时生成一个 WAV blob 供离线模式使用
+                const wavBlob = pcmToWav(pcmData, 16000, 1, 16);
+                lastAudioBlob = wavBlob;
+
+                const result = await evaluateSpeech(pcmData, sentence, wavBlob);
+
+                appState.tempPronunciationScore = result.pronunciation;
+                appState.tempPronunciationDetail = result;
+
+                const providerName = (appState.apiConfig?.provider === 'xfyun') ? '讯飞' : '本地';
+                hint.textContent = `发音得分: ${result.pronunciation}分 (${providerName})`;
+                hint.className = result.pronunciation >= 90
+                    ? 'text-sm text-emerald-600 font-bold mb-4 h-5'
+                    : result.pronunciation >= 75
+                        ? 'text-sm text-amber-600 font-bold mb-4 h-5'
+                        : 'text-sm text-red-500 font-bold mb-4 h-5';
+
+                if (result.error) {
+                    showToast(`${providerName}评测: ${result.error}`, 'warning');
+                } else {
+                    showToast(`${providerName} AI 发音测评完成: ${result.pronunciation}分`, 'success');
+                }
+            } else {
+                hint.textContent = '未检测到录音，请重试';
+                hint.className = 'text-sm text-red-500 mb-4 h-5';
+            }
+        } else {
+            // Start recording
+            const success = await startRealRecording();
+            if (success) {
+                const hint = document.getElementById('pronunciation-hint');
+                hint.textContent = '正在录音... 请朗读上方句子';
+                hint.className = 'text-sm text-red-500 font-bold mb-4 h-5 animate-pulse';
+                showToast('开始录音，请朗读英文句子', 'info');
+            }
+        }
+    }
+
+    // --- Check Answer with AI Evaluation ---
+    async function checkAnswer() {
+        const student = appState.students.find(s => s.id === appState.currentStudentId);
+        const sentence = student.sentences[appState.currentSentenceIndex];
+        const userCN = document.getElementById('translation-input').value.trim();
+
+        if (!userCN) {
+            showToast('请输入中文翻译', 'warning');
+            return;
+        }
+
+        // Smart Chinese semantic matching
+        const matchResult = smartChineseMatch(userCN, sentence.cn);
+
+        // Get pronunciation score from AI evaluation or default
+        const pronScore = appState.tempPronunciationScore || 0;
+        const pronDetail = appState.tempPronunciationDetail || {
+            pronunciation: pronScore,
+            accuracy: pronScore,
+            fluency: pronScore,
+            completeness: pronScore || 100
+        };
+
+        // Weighted total score
+        const transWeight = 0.35;
+        const pronWeight = 0.65;
+        const totalScore = Math.floor(matchResult.score * transWeight + pronScore * pronWeight);
+
+        appState.practiceResult = {
+            totalScore,
+            pronScore,
+            pronDetail,
+            transScore: matchResult.score,
+            isCorrect: matchResult.isCorrect,
+            matchDetail: matchResult.detail,
+            userCN,
+            correctCN: sentence.cn,
+            sentenceEn: sentence.en
+        };
+
+        // Update stats
+        student.stats.accuracy = Math.floor((student.stats.accuracy * 0.7 + totalScore * 0.3));
+        student.stats.time += Math.floor(recordingSeconds / 60) + 1;
+
+        // Save to cloud
+        await cloudSaveStudent(student);
+        await saveHistory(student.id, appState.practiceResult);
+
+        showResultPage();
+    }
+
+    async function saveHistory(studentId, result) {
+        const record = {
+            studentId,
+            timestamp: Date.now(),
+            sentenceEn: result.sentenceEn,
+            correctCN: result.correctCN,
+            userCN: result.userCN,
+            totalScore: result.totalScore,
+            pronScore: result.pronScore,
+            transScore: result.transScore
+        };
+        await cloudSaveHistory(record);
+    }
+
+    function showResultPage() {
+        const res = appState.practiceResult;
+        document.getElementById('score-text').textContent = res.totalScore;
+
+        // Circle animation
+        const circle = document.getElementById('score-circle');
+        const offset = 440 - (440 * res.totalScore) / 100;
+        circle.style.strokeDashoffset = offset;
+        circle.style.stroke = res.totalScore >= 90 ? '#22c55e' : (res.totalScore >= 75 ? '#fbbf24' : '#ef4444');
+
+        // Feedback
+        const feedback = document.getElementById('feedback-message');
+        if (res.totalScore >= 90) {
+            feedback.textContent = "太棒了！你是英语小天才！🎉";
+            triggerConfetti();
+        } else if (res.totalScore >= 75) {
+            feedback.textContent = "做得不错，继续加油！🌟";
+        } else {
+            feedback.textContent = "再试一次，你可以做得更好！💪";
+        }
+
+        // Analysis
+        document.getElementById('result-correct-cn').textContent = res.correctCN;
+        const userCNEl = document.getElementById('result-user-cn');
+        userCNEl.innerHTML = res.isCorrect
+            ? `<span class="text-emerald-600 font-bold">${res.userCN} ✓ ${res.matchDetail}</span>`
+            : `<span class="text-red-500">${res.userCN}</span> <span class="text-slate-400 text-sm">(${res.matchDetail})</span>`;
+
+        // Pronunciation detail
+        if (res.pronDetail) {
+            document.getElementById('score-accuracy').textContent = res.pronDetail.accuracy || res.pronScore;
+            document.getElementById('score-fluency').textContent = res.pronDetail.fluency || Math.max(0, res.pronScore - 5);
+            document.getElementById('score-completeness').textContent = res.pronDetail.completeness || 100;
+        }
+
+        // Suggestions
+        let suggestion = '';
+        if (res.pronScore < 75) {
+            suggestion = '发音需要加强练习，建议多听几遍原声，注意每个单词的发音。';
+        } else if (res.pronScore < 85) {
+            suggestion = '发音不错，注意语调和连读，多模仿原声。';
+        } else if (!res.isCorrect) {
+            suggestion = '发音很棒！但翻译可以更准确，注意中英文表达的差异。';
+        } else {
+            suggestion = '非常优秀！发音和翻译都很出色，继续保持！';
+        }
+        document.getElementById('result-suggestion').textContent = suggestion;
+
+        navigateTo('page-result');
+    }
+
+    function resetPractice() {
+        document.getElementById('translation-input').value = '';
+        appState.tempPronunciationScore = null;
+        appState.tempPronunciationDetail = null;
+        document.getElementById('pronunciation-hint').textContent = '点击麦克风开始跟读';
+        document.getElementById('pronunciation-hint').className = 'text-sm text-slate-500 mb-4 h-5';
+        document.getElementById('waveform-container').classList.add('hidden');
+        playAudio();
+    }
+
+    function retryPractice() {
+        const student = appState.students.find(s => s.id === appState.currentStudentId);
+        if (appState.currentSentenceIndex < student.sentences.length - 1) {
+            appState.currentSentenceIndex++;
+        } else {
+            appState.currentSentenceIndex = 0;
+            showToast("已完成所有句子，回到第一句", "info");
+        }
+        appState.tempPronunciationScore = null;
+        appState.tempPronunciationDetail = null;
+        navigateTo('page-practice');
+    }
+
+    // --- Teacher Dashboard ---
+    function renderTeacherDashboard() {
+        const container = document.getElementById('teacher-student-list');
+        container.innerHTML = '';
+
+        appState.students.forEach(student => {
+            const card = document.createElement('div');
+            card.className = 'bg-white p-6 rounded-2xl shadow-md border border-slate-100';
+
+            let sentencesHTML = '';
+            student.sentences.forEach((s, idx) => {
+                sentencesHTML += `
+                    <div class="flex gap-2 mb-2 items-center sentence-row">
+                        <div class="flex-1">
+                            <input type="text" value="${escapeHtml(s.en)}" class="w-full mb-1 p-2 bg-slate-50 rounded border border-slate-200 text-sm focus:border-indigo-400 outline-none" data-sid="${student.id}" data-idx="${idx}" data-field="en">
+                            <input type="text" value="${escapeHtml(s.cn)}" class="w-full p-2 bg-slate-50 rounded border border-slate-200 text-sm focus:border-indigo-400 outline-none" data-sid="${student.id}" data-idx="${idx}" data-field="cn">
+                        </div>
+                        ${student.sentences.length > 1 ? `<button onclick="deleteSentence(${student.id}, ${idx})" class="text-red-400 hover:text-red-600 p-2"><svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>` : ''}
+                    </div>
+                `;
+            });
+
+            card.innerHTML = `
+                <div class="flex items-center mb-4 border-b pb-4">
+                    <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-lg mr-4">
+                        ${student.avatar}
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">${student.name}</h3>
+                        <p class="text-sm text-slate-500">ID: ${student.id} | 正确率: ${student.stats.accuracy}% | 时长: ${student.stats.time}min</p>
+                    </div>
+                </div>
+                <div id="sentences-container-${student.id}">
+                    ${sentencesHTML}
+                </div>
+                ${student.sentences.length < 6 ? `<button onclick="addSentence(${student.id})" class="mt-4 w-full py-2 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-indigo-400 hover:text-indigo-500 transition flex items-center justify-center"><svg class="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> 添加句子</button>` : ''}
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function addSentence(studentId) {
+        const student = appState.students.find(s => s.id === studentId);
+        if (student.sentences.length < 6) {
+            student.sentences.push({ en: "New sentence.", cn: "新句子。" });
+            renderTeacherDashboard();
+        }
+    }
+
+    function deleteSentence(studentId, index) {
+        const student = appState.students.find(s => s.id === studentId);
+        if (student.sentences.length > 1) {
+            student.sentences.splice(index, 1);
+            renderTeacherDashboard();
+        }
+    }
+
+    async function saveAllChanges() {
+        const inputs = document.querySelectorAll('#teacher-student-list input');
+        inputs.forEach(input => {
+            const sid = parseInt(input.dataset.sid);
+            const idx = parseInt(input.dataset.idx);
+            const field = input.dataset.field;
+            const student = appState.students.find(s => s.id === sid);
+            if (student) {
+                student.sentences[idx][field] = input.value;
+            }
+        });
+        for (const student of appState.students) {
+            await cloudSaveStudent(student);
+        }
+        showToast('所有更改已保存到云端！', 'success');
+    }
+
+    // --- Statistics ---
+    function renderStats() {
+        const totalStudents = appState.students.length || 1;
+        const avgTime = Math.round(appState.students.reduce((acc, s) => acc + s.stats.time, 0) / totalStudents);
+        const avgAcc = Math.round(appState.students.reduce((acc, s) => acc + s.stats.accuracy, 0) / totalStudents);
+        const totalStreak = appState.students.reduce((acc, s) => acc + s.stats.streak, 0);
+
+        document.getElementById('stat-avg-time').textContent = `${avgTime} min`;
+        document.getElementById('stat-avg-accuracy').textContent = `${avgAcc}%`;
+        document.getElementById('stat-total-streak').textContent = totalStreak;
+
+        const names = appState.students.map(s => s.name);
+        const accuracies = appState.students.map(s => s.stats.accuracy);
+        const times = appState.students.map(s => s.stats.time);
+
+        renderChart('chart-accuracy', 'bar', names, accuracies, '%', '#6366f1');
+        renderChart('chart-time', 'line', names, times, 'min', '#6366f1');
+
+        renderRankings();
+    }
+
+    function renderChart(domId, type, xData, yData, unit, color) {
+        const chartDom = document.getElementById(domId);
+        if (!chartDom) return;
+        const myChart = echarts.init(chartDom);
+        const option = {
+            tooltip: { trigger: 'axis' },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'category', data: xData, axisTick: { alignWithLabel: true } },
+            yAxis: { type: 'value' },
+            series: [{
+                name: unit,
+                type: type,
+                data: yData,
+                itemStyle: { color: color },
+                barWidth: '40%',
+                smooth: true,
+                areaStyle: type === 'line' ? { opacity: 0.1 } : null
+            }]
+        };
+        myChart.setOption(option);
+        window.addEventListener('resize', () => myChart.resize());
+    }
+
+    function renderRankings() {
+        const sortedByAcc = [...appState.students].sort((a, b) => b.stats.accuracy - a.stats.accuracy);
+        const sortedByTime = [...appState.students].sort((a, b) => b.stats.time - a.stats.time);
+
+        const createListHTML = (list, type) => {
+            return list.map((s, i) => `
+                <li class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                    <div class="flex items-center">
+                        <span class="w-6 h-6 rounded-full ${i===0?'bg-amber-400 text-white':(i===1?'bg-gray-300 text-white':'bg-slate-200 text-slate-600')} flex items-center justify-center text-xs font-bold mr-3">${i+1}</span>
+                        <span class="font-medium text-slate-700">${s.name}</span>
+                    </div>
+                    <span class="font-bold ${type==='acc'?'text-emerald-600':'text-indigo-600'}">${type==='acc' ? s.stats.accuracy+'%' : s.stats.time+'min'}</span>
+                </li>
+            `).join('');
+        };
+
+        document.getElementById('list-accuracy').innerHTML = createListHTML(sortedByAcc, 'acc');
+        document.getElementById('list-time').innerHTML = createListHTML(sortedByTime, 'time');
+    }
+
+    // --- Data Persistence (云端) ---
+    // 所有数据操作已改为 cloudGetStudents / cloudSaveStudent / cloudSaveHistory
+    // 不再需要 IndexedDB
+
+    // --- Toast Notifications ---
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+
+        let bgClass = 'bg-slate-800';
+        let icon = '';
+
+        if (type === 'success') {
+            bgClass = 'bg-emerald-500';
+            icon = '<svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+        } else if (type === 'warning') {
+            bgClass = 'bg-amber-500';
+            icon = '<svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
+        } else if (type === 'info') {
+            bgClass = 'bg-indigo-500';
+            icon = '<svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+        }
+
+        toast.className = `toast ${bgClass} text-white px-6 py-3 rounded-full shadow-lg flex items-center mb-3 font-bold`;
+        toast.innerHTML = `${icon}<span>${message}</span>`;
+
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    function triggerConfetti() {
+        var duration = 3 * 1000;
+        var animationEnd = Date.now() + duration;
+        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+        var random = function(min, max) { return Math.random() * (max - min) + min; };
+
+        var interval = setInterval(function() {
+            var timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) return clearInterval(interval);
+            var particleCount = 50 * (timeLeft / duration);
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+
+    // --- Initialize ---
+    window.onload = async function() {
+        try {
+            appState.students = await cloudGetStudents();
+            appState.apiConfig = defaultConfig;
+            if (appState.students.length === 0) {
+                showToast('⚠️ 未加载到学生数据，请检查 Supabase 配置', 'warning');
+            }
+        } catch (err) {
+            console.error('初始化错误:', err);
+            appState.students = [];
+            appState.apiConfig = defaultConfig;
+            showToast('⚠️ 云端连接失败，请检查网络', 'warning');
+        }
+
+        // Preload voices
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.getVoices();
+        };
+    };
+
+    </script>
+</body>
+</html>
