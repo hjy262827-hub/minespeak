@@ -394,12 +394,13 @@
     // --- Supabase 初始化 ---
     const SUPABASE_URL = 'https://lceudnohqjqfrgkahanq.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZXVkbm9ocWpxZnJna2FoYW5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMwNDU1MjAsImV4cCI6MjA5ODYyMTUyMH0.gzwrxqoKD0jfriAmijpK1ur-ai12ndE3d8LTnYp01ZI';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { createClient } = supabase;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // --- 云端数据操作 ---
     async function cloudGetStudents() {
         try {
-            const { data, error } = await supabase.from('students').select('*').order('id');
+            const { data, error } = await supabaseClient.from('students').select('*').order('id');
             if (error) { console.error('获取学生列表失败:', error); return []; }
             if (!data) return [];
             // 确保 JSONB 字段正确解析
@@ -415,7 +416,7 @@
     }
 
     async function cloudSaveStudent(student) {
-        const { error } = await supabase.from('students').upsert({
+        const { error } = await supabaseClient.from('students').upsert({
             id: student.id,
             name: student.name,
             avatar: student.avatar,
@@ -426,7 +427,7 @@
     }
 
     async function cloudSaveHistory(record) {
-        const { error } = await supabase.from('history').insert({
+        const { error } = await supabaseClient.from('history').insert({
             student_id: record.studentId,
             timestamp: record.timestamp,
             sentence_en: record.sentenceEn,
