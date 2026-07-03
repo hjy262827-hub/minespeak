@@ -398,14 +398,20 @@
 
     // --- 云端数据操作 ---
     async function cloudGetStudents() {
-        const { data, error } = await supabase.from('students').select('*').order('id');
-        if (error) { console.error('获取学生列表失败:', error); return []; }
-        // 确保 JSONB 字段正确解析
-        return data.map(s => ({
-            ...s,
-            sentences: typeof s.sentences === 'string' ? JSON.parse(s.sentences) : s.sentences,
-            stats: typeof s.stats === 'string' ? JSON.parse(s.stats) : s.stats
-        }));
+        try {
+            const { data, error } = await supabase.from('students').select('*').order('id');
+            if (error) { console.error('获取学生列表失败:', error); return []; }
+            if (!data) return [];
+            // 确保 JSONB 字段正确解析
+            return data.map(s => ({
+                ...s,
+                sentences: typeof s.sentences === 'string' ? JSON.parse(s.sentences) : s.sentences,
+                stats: typeof s.stats === 'string' ? JSON.parse(s.stats) : s.stats
+            }));
+        } catch (err) {
+            console.error('cloudGetStudents 异常:', err);
+            return [];
+        }
     }
 
     async function cloudSaveStudent(student) {
@@ -989,18 +995,29 @@
 
     // --- Student Picker ---
     async function showStudentPicker() {
-        const students = await cloudGetStudents();
         const list = document.getElementById('student-picker-list');
-        list.innerHTML = students.map(s => `
-            <div onclick="loginAsStudent(${s.id})" class="p-4 bg-slate-50 hover:bg-indigo-50 rounded-xl cursor-pointer transition flex items-center border-2 border-transparent hover:border-indigo-300">
-                <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold mr-4">${s.avatar}</div>
-                <div>
-                    <p class="font-bold text-slate-800">${s.name}</p>
-                    <p class="text-xs text-slate-500">正确率 ${s.stats.accuracy}% · 练习 ${s.stats.time}min</p>
-                </div>
-            </div>
-        `).join('');
+        list.innerHTML = '<div class="text-center py-8 text-slate-400">加载中...</div>';
         document.getElementById('student-picker-overlay').classList.remove('hidden');
+
+        try {
+            const students = await cloudGetStudents();
+            if (students.length === 0) {
+                list.innerHTML = '<div class="text-center py-8 text-red-400">未加载到学生数据，请检查网络连接</div>';
+                return;
+            }
+            list.innerHTML = students.map(s => `
+                <div onclick="loginAsStudent(${s.id})" class="p-4 bg-slate-50 hover:bg-indigo-50 rounded-xl cursor-pointer transition flex items-center border-2 border-transparent hover:border-indigo-300">
+                    <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold mr-4">${s.avatar}</div>
+                    <div>
+                        <p class="font-bold text-slate-800">${s.name}</p>
+                        <p class="text-xs text-slate-500">正确率 ${s.stats.accuracy}% · 练习 ${s.stats.time}min</p>
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error('获取学生列表失败:', err);
+            list.innerHTML = '<div class="text-center py-8 text-red-400">加载失败，请检查网络连接后重试</div>';
+        }
     }
 
     function closeStudentPicker() {
@@ -1503,17 +1520,21 @@
 
     // --- Initialize ---
     window.onload = async function() {
+        // 先确保页面立即可交互
+        appState.apiConfig = defaultConfig;
+
         try {
-            appState.students = await cloudGetStudents();
-            appState.apiConfig = defaultConfig;
-            if (appState.students.length === 0) {
-                showToast('⚠️ 未加载到学生数据，请检查 Supabase 配置', 'warning');
-            }
+            // 带超时的云端数据加载，超时 5 秒
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+            appState.students = await Promise.race([cloudGetStudents(), timeoutPromise]);
         } catch (err) {
             console.error('初始化错误:', err);
             appState.students = [];
-            appState.apiConfig = defaultConfig;
-            showToast('⚠️ 云端连接失败，请检查网络', 'warning');
+            showToast('⚠️ 云端连接超时，请检查网络', 'warning');
+        }
+
+        if (appState.students.length === 0) {
+            showToast('⚠️ 未加载到学生数据，请检查 Supabase 配置', 'warning');
         }
 
         // Preload voices
