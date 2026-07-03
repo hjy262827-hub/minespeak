@@ -971,7 +971,7 @@
         setTimeout(() => target.classList.add('active'), 10);
 
         if (pageId === 'page-practice') {
-            refreshStudentData();
+            refreshStudentData().then(() => renderCurrentSentence());
         } else if (pageId === 'page-teacher') {
             refreshAllData().then(() => renderTeacherDashboard());
         } else if (pageId === 'page-stats') {
@@ -985,7 +985,6 @@
 
     async function refreshStudentData() {
         appState.students = await cloudGetStudents();
-        renderCurrentSentence();
     }
 
     // --- Student Picker ---
@@ -1010,7 +1009,6 @@
 
     function loginAsStudent(studentId) {
         closeStudentPicker();
-        appState.students = []; // 先清空，后面会从云端加载
         login('student');
         appState.currentStudentId = studentId;
         navigateTo('page-practice');
