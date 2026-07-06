@@ -72,6 +72,19 @@
         .config-panel {
             transition: all 0.3s ease;
         }
+        /* 像素风合成台样式 */
+        #crafting-grid > div {
+            font-family: 'Courier New', monospace;
+            image-rendering: pixelated;
+        }
+        @keyframes craft-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .craft-success {
+            animation: craft-pop 0.4s ease-out;
+        }
     </style>
 </head>
 <body class="text-slate-700 flex flex-col min-h-screen">
@@ -92,6 +105,9 @@
                 <div class="flex items-center space-x-4">
                     <button onclick="navigateTo('page-practice')" id="nav-practice" class="text-gray-600 hover:text-indigo-500 px-3 py-2 rounded-md text-sm font-medium transition hidden">
                         学生练习
+                    </button>
+                    <button onclick="navigateTo('page-workbench')" id="nav-workbench" class="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium transition hidden">
+                        工作台
                     </button>
                     <button onclick="navigateTo('page-teacher')" id="nav-teacher" class="text-gray-600 hover:text-indigo-500 px-3 py-2 rounded-md text-sm font-medium transition hidden">
                         老师后台
@@ -293,9 +309,101 @@
                     </div>
                 </div>
 
-                <button onclick="retryPractice()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-emerald-200 transition btn-press">
+                <!-- 材料奖励选择 -->
+                <div id="material-reward-section" class="mt-6 bg-amber-50 rounded-2xl p-6 border-2 border-amber-200">
+                    <h3 class="text-lg font-bold text-amber-800 mb-3 flex items-center justify-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                        选择一个奖励材料
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div onclick="collectMaterial('log')" id="reward-log" class="bg-white p-3 rounded-xl border-2 border-amber-300 hover:border-amber-500 hover:shadow-lg cursor-pointer transition btn-press text-center">
+                            <div class="text-3xl mb-1">🪵</div>
+                            <p class="text-xs font-bold text-amber-800">原木</p>
+                            <p class="text-[10px] text-amber-500">+1</p>
+                        </div>
+                        <div onclick="collectMaterial('cobblestone')" id="reward-cobblestone" class="bg-white p-3 rounded-xl border-2 border-gray-300 hover:border-gray-500 hover:shadow-lg cursor-pointer transition btn-press text-center">
+                            <div class="text-3xl mb-1">🪨</div>
+                            <p class="text-xs font-bold text-gray-700">圆石</p>
+                            <p class="text-[10px] text-gray-500">+1</p>
+                        </div>
+                        <div onclick="collectMaterial('coal')" id="reward-coal" class="bg-white p-3 rounded-xl border-2 border-slate-300 hover:border-slate-500 hover:shadow-lg cursor-pointer transition btn-press text-center">
+                            <div class="text-3xl mb-1">⚫</div>
+                            <p class="text-xs font-bold text-slate-700">煤炭</p>
+                            <p class="text-[10px] text-slate-500">+1</p>
+                        </div>
+                    </div>
+                    <p id="material-collected-msg" class="text-center text-sm text-emerald-600 font-bold mt-3 hidden"></p>
+                </div>
+
+                <button onclick="retryPractice()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-lg shadow-lg shadow-emerald-200 transition btn-press mt-4">
                     再练一次
                 </button>
+            </div>
+        </section>
+
+        <!-- 3.5 Workbench / Crafting Page -->
+        <section id="page-workbench" class="page-section max-w-2xl mx-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-cartoon text-slate-800">⚒️ 工作台</h2>
+                <div class="flex items-center gap-2">
+                    <span id="wb-student-name" class="text-sm font-bold text-slate-600"></span>
+                </div>
+            </div>
+
+            <!-- Inventory Bar -->
+            <div class="bg-white rounded-2xl shadow-md p-4 mb-6 border-2 border-amber-200">
+                <h3 class="text-sm font-bold text-amber-700 mb-3 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    我的背包
+                </h3>
+                <div id="inventory-grid" class="grid grid-cols-8 gap-2">
+                </div>
+            </div>
+
+            <!-- Crafting Grid (3x3) -->
+            <div class="bg-white rounded-2xl shadow-lg p-6 border-3 border-stone-400" style="border-style: outset;">
+                <h3 class="text-sm font-bold text-stone-600 mb-4 text-center uppercase tracking-wider">合成台 · 3×3</h3>
+                <div class="flex justify-center gap-8">
+                    <!-- 3x3 Input Grid -->
+                    <div>
+                        <div id="crafting-grid" class="grid grid-cols-3 gap-1 bg-stone-300 p-2 rounded-lg" style="border-style: inset;">
+                        </div>
+                        <div class="flex justify-center mt-2">
+                            <button onclick="clearCraftingGrid()" class="text-xs text-stone-500 hover:text-red-500 transition">清空格子</button>
+                        </div>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="flex items-center">
+                        <svg class="w-8 h-8 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                    </div>
+
+                    <!-- Output Slot -->
+                    <div class="flex flex-col items-center">
+                        <div id="crafting-output" class="w-16 h-16 bg-stone-200 rounded-lg flex items-center justify-center border-2 border-stone-400 cursor-pointer hover:border-emerald-400 transition" onclick="craftItem()" style="border-style: outset;">
+                            <span class="text-stone-400 text-xs">结果</span>
+                        </div>
+                        <p class="text-[10px] text-stone-500 mt-1">点击合成</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipe Book -->
+            <div class="bg-white rounded-2xl shadow-md p-4 mt-6 border-2 border-amber-100">
+                <h3 class="text-sm font-bold text-amber-700 mb-3 flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    配方书
+                </h3>
+                <div id="recipe-book" class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                </div>
             </div>
         </section>
 
@@ -443,11 +551,15 @@
             if (error) { console.error('获取学生列表失败:', error); return []; }
             if (!data) return [];
             // 确保 JSONB 字段正确解析
-            return data.map(s => ({
-                ...s,
-                sentences: typeof s.sentences === 'string' ? JSON.parse(s.sentences) : s.sentences,
-                stats: typeof s.stats === 'string' ? JSON.parse(s.stats) : s.stats
-            }));
+            return data.map(s => {
+                const stats = typeof s.stats === 'string' ? JSON.parse(s.stats) : (s.stats || {});
+                return {
+                    ...s,
+                    sentences: typeof s.sentences === 'string' ? JSON.parse(s.sentences) : s.sentences,
+                    stats: { accuracy: stats.accuracy || 0, time: stats.time || 0, streak: stats.streak || 0 },
+                    inventory: stats.inventory || {}
+                };
+            });
         } catch (err) {
             console.error('cloudGetStudents 异常:', err);
             return [];
@@ -460,7 +572,7 @@
             name: student.name,
             avatar: student.avatar,
             sentences: student.sentences,
-            stats: student.stats
+            stats: { ...student.stats, inventory: student.inventory || {} }
         });
         if (error) console.error('保存学生失败:', error);
     }
@@ -1018,6 +1130,8 @@
 
         if (pageId === 'page-practice') {
             refreshStudentData().then(() => renderCurrentSentence());
+        } else if (pageId === 'page-workbench') {
+            refreshStudentData().then(() => renderWorkbench());
         } else if (pageId === 'page-teacher') {
             refreshAllData().then(() => renderTeacherDashboard());
         } else if (pageId === 'page-stats') {
@@ -1077,11 +1191,13 @@
 
         if (role === 'student') {
             document.getElementById('nav-practice').classList.remove('hidden');
+            document.getElementById('nav-workbench').classList.remove('hidden');
             document.getElementById('nav-teacher').classList.add('hidden');
             document.getElementById('nav-stats').classList.add('hidden');
             showToast('欢迎回来，同学！', 'success');
         } else {
             document.getElementById('nav-practice').classList.add('hidden');
+            document.getElementById('nav-workbench').classList.add('hidden');
             document.getElementById('nav-teacher').classList.remove('hidden');
             document.getElementById('nav-stats').classList.remove('hidden');
             navigateTo('page-teacher');
@@ -1261,9 +1377,11 @@
             sentenceEn: sentence.en
         };
 
-        // Update stats
+        // Update stats (preserve inventory)
+        const inventory = student.inventory || {};
         student.stats.accuracy = Math.floor((student.stats.accuracy * 0.7 + totalScore * 0.3));
         student.stats.time += Math.floor(recordingSeconds / 60) + 1;
+        student.inventory = inventory;
 
         // Save to cloud
         await cloudSaveStudent(student);
@@ -1289,6 +1407,14 @@
     function showResultPage() {
         const res = appState.practiceResult;
         document.getElementById('score-text').textContent = res.totalScore;
+
+        // 重置材料奖励状态
+        appState._materialCollected = false;
+        document.getElementById('material-collected-msg').classList.add('hidden');
+        ['reward-log','reward-cobblestone','reward-coal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
+        });
 
         // Circle animation
         const circle = document.getElementById('score-circle');
@@ -1357,7 +1483,436 @@
         }
         appState.tempPronunciationScore = null;
         appState.tempPronunciationDetail = null;
+        // 重置材料奖励 UI
+        document.getElementById('material-collected-msg').classList.add('hidden');
+        ['reward-log','reward-cobblestone','reward-coal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
+        });
         navigateTo('page-practice');
+    }
+
+    // =============================================
+    // 像素风合成系统 (Pixel Crafting System)
+    // =============================================
+
+    // 材料定义
+    const MATERIALS = {
+        log:            { id:'log',           name:'原木',   icon:'🪵', color:'#8B6914', tier:0 },
+        plank:          { id:'plank',         name:'木板',   icon:'🟫', color:'#C4943A', tier:1 },
+        stick:          { id:'stick',         name:'木棍',   icon:'🥢', color:'#A0845C', tier:2 },
+        cobblestone:    { id:'cobblestone',   name:'圆石',   icon:'🪨', color:'#7F8C8D', tier:0 },
+        stone_brick:    { id:'stone_brick',   name:'石砖',   icon:'🧱', color:'#95A5A6', tier:1 },
+        coal:           { id:'coal',          name:'煤炭',   icon:'⚫', color:'#2C3E50', tier:0 },
+        torch:          { id:'torch',         name:'火把',   icon:'🔥', color:'#E67E22', tier:2 },
+        wooden_sword:   { id:'wooden_sword',  name:'木剑',   icon:'🗡️', color:'#C4943A', tier:2 },
+        stone_pickaxe:  { id:'stone_pickaxe', name:'石镐',   icon:'⛏️', color:'#7F8C8D', tier:2 },
+        furnace:        { id:'furnace',       name:'熔炉',   icon:'🔥', color:'#95A5A6', tier:2 }
+    };
+
+    // 合成配方 (参照 Minecraft 机制改编)
+    // 格式: { pattern: ['xxx','xxx','xxx'], key: { x: 'materialId' }, result: { id, count } }
+    const RECIPES = [
+        // 原木 → 木板 (1→4)
+        {
+            name: '原木 → 木板',
+            pattern: ['L..','...','...'],
+            key: { L:'log' },
+            result: { id:'plank', count:4 }
+        },
+        // 木板 → 木棍 (2竖排→4)
+        {
+            name: '木板 → 木棍',
+            pattern: ['P..','P..','...'],
+            key: { P:'plank' },
+            result: { id:'stick', count:4 }
+        },
+        // 圆石 → 石砖 (2x2→4)
+        {
+            name: '圆石 → 石砖',
+            pattern: ['CC.','CC.','...'],
+            key: { C:'cobblestone' },
+            result: { id:'stone_brick', count:4 }
+        },
+        // 木棍 + 煤炭 → 火把 (1→4)
+        {
+            name: '煤炭 + 木棍 → 火把',
+            pattern: ['C..','S..','...'],
+            key: { C:'coal', S:'stick' },
+            result: { id:'torch', count:4 }
+        },
+        // 木板 + 木棍 → 木剑
+        {
+            name: '木板 + 木棍 → 木剑',
+            pattern: ['P..','P..','S..'],
+            key: { P:'plank', S:'stick' },
+            result: { id:'wooden_sword', count:1 }
+        },
+        // 圆石 + 木棍 → 石镐 (3圆石+2木棍)
+        {
+            name: '圆石 + 木棍 → 石镐',
+            pattern: ['CCC','.S.','.S.'],
+            key: { C:'cobblestone', S:'stick' },
+            result: { id:'stone_pickaxe', count:1 }
+        },
+        // 石砖 → 熔炉 (8围一圈)
+        {
+            name: '石砖 → 熔炉',
+            pattern: ['BBB','B.B','BBB'],
+            key: { B:'stone_brick' },
+            result: { id:'furnace', count:1 }
+        }
+    ];
+
+    // 获取当前学生的背包数据
+    function getStudentInventory() {
+        const student = appState.students.find(s => s.id === appState.currentStudentId);
+        if (!student) return {};
+        if (!student.inventory) student.inventory = {};
+        return student.inventory;
+    }
+
+    // 保存背包到云端
+    async function saveInventory() {
+        const student = appState.students.find(s => s.id === appState.currentStudentId);
+        if (!student) return;
+        await cloudSaveStudent(student);
+    }
+
+    // 练习完成后收集材料
+    async function collectMaterial(materialId) {
+        // 检查是否已经选择过
+        if (appState._materialCollected) {
+            showToast('本次练习已领取过奖励', 'warning');
+            return;
+        }
+        appState._materialCollected = true;
+
+        const inv = getStudentInventory();
+        inv[materialId] = (inv[materialId] || 0) + 1;
+        await saveInventory();
+
+        // UI 反馈
+        const mat = MATERIALS[materialId];
+        document.getElementById('material-collected-msg').textContent = `✅ 获得 ${mat.icon} ${mat.name} ×1！去工作台合成吧！`;
+        document.getElementById('material-collected-msg').classList.remove('hidden');
+
+        // 禁用其他选择
+        ['reward-log','reward-cobblestone','reward-coal'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.style.opacity = '0.5'; el.style.pointerEvents = 'none'; }
+        });
+
+        showToast(`获得 ${mat.name}！`, 'success');
+    }
+
+    // 渲染工作台页面
+    function renderWorkbench() {
+        const student = appState.students.find(s => s.id === appState.currentStudentId);
+        if (!student) return;
+        document.getElementById('wb-student-name').textContent = student.name + ' 的工作台';
+
+        renderInventory();
+        renderCraftingGrid();
+        renderRecipeBook();
+    }
+
+    // 渲染背包
+    function renderInventory() {
+        const inv = getStudentInventory();
+        const grid = document.getElementById('inventory-grid');
+        const allMaterials = Object.values(MATERIALS);
+
+        grid.innerHTML = allMaterials.map(mat => {
+            const count = inv[mat.id] || 0;
+            return `
+                <div class="relative bg-stone-100 rounded-lg p-1 text-center border-2 ${count > 0 ? 'border-amber-300' : 'border-stone-200'} cursor-pointer hover:border-amber-400 transition" 
+                     onclick="placeInCraftingGrid('${mat.id}')" 
+                     title="${mat.name} (点击放入合成台)">
+                    <div class="text-xl">${mat.icon}</div>
+                    <div class="text-[10px] font-bold ${count > 0 ? 'text-stone-700' : 'text-stone-400'}">${count}</div>
+                    ${count > 0 ? '' : '<div class="text-[8px] text-stone-400 mt-0.5">无</div>'}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // 当前 3x3 合成网格状态
+    let craftingSlots = Array(9).fill(null); // null 或 materialId
+
+    function renderCraftingGrid() {
+        const grid = document.getElementById('crafting-grid');
+        grid.innerHTML = craftingSlots.map((matId, idx) => {
+            const mat = matId ? MATERIALS[matId] : null;
+            return `
+                <div class="w-12 h-12 bg-stone-100 rounded flex items-center justify-center cursor-pointer hover:bg-red-50 transition border ${matId ? 'border-amber-400' : 'border-stone-300'}"
+                     onclick="${matId ? `removeFromSlot(${idx})` : ''}"
+                     title="${matId ? mat.name + ' (点击移除)' : '空格子'}">
+                    ${mat ? `<span class="text-lg">${mat.icon}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        // 更新输出预览
+        renderOutput();
+    }
+
+    // 从背包放入合成台
+    function placeInCraftingGrid(materialId) {
+        const inv = getStudentInventory();
+        const count = inv[materialId] || 0;
+        if (count <= 0) return;
+
+        // 找第一个空格
+        const emptyIdx = craftingSlots.findIndex(s => s === null);
+        if (emptyIdx === -1) {
+            showToast('合成台已满，请先清空格子', 'warning');
+            return;
+        }
+
+        // 检查该材料是否已经在合成台中使用了所有库存
+        const usedInGrid = craftingSlots.filter(s => s === materialId).length;
+        if (usedInGrid >= count) {
+            showToast('该材料已全部放入', 'warning');
+            return;
+        }
+
+        craftingSlots[emptyIdx] = materialId;
+        renderCraftingGrid();
+        renderInventory();
+    }
+
+    function removeFromSlot(idx) {
+        craftingSlots[idx] = null;
+        renderCraftingGrid();
+        renderInventory();
+    }
+
+    function clearCraftingGrid() {
+        craftingSlots = Array(9).fill(null);
+        renderCraftingGrid();
+        renderInventory();
+    }
+
+    // 匹配配方
+    function matchRecipe() {
+        // 将 3x3 网格转成 3 行字符串
+        const gridRows = [];
+        for (let r = 0; r < 3; r++) {
+            let row = '';
+            for (let c = 0; c < 3; c++) {
+                row += craftingSlots[r * 3 + c] || '.';
+            }
+            gridRows.push(row);
+        }
+
+        for (const recipe of RECIPES) {
+            // 尝试匹配（允许配方在网格中偏移）
+            for (let offsetR = 0; offsetR <= 3 - recipe.pattern.length; offsetR++) {
+                for (let offsetC = 0; offsetC <= 3 - recipe.pattern[0].length; offsetC++) {
+                    if (matchesPattern(gridRows, recipe, offsetR, offsetC)) {
+                        return recipe;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    function matchesPattern(gridRows, recipe, offsetR, offsetC) {
+        const pattern = recipe.pattern;
+        const key = recipe.key;
+
+        for (let pr = 0; pr < pattern.length; pr++) {
+            for (let pc = 0; pc < pattern[pr].length; pc++) {
+                const pChar = pattern[pr][pc];
+                const gChar = gridRows[offsetR + pr][offsetC + pc];
+
+                if (pChar === '.') {
+                    // 配方要求该位置为空
+                    if (gChar !== '.') return false;
+                } else {
+                    // 配方要求该位置为特定材料
+                    const expectedMat = key[pChar];
+                    if (gChar !== expectedMat) return false;
+                }
+            }
+        }
+
+        // 还要确保配方之外的位置都是空的（精确匹配）
+        const usedPositions = new Set();
+        for (let pr = 0; pr < pattern.length; pr++) {
+            for (let pc = 0; pc < pattern[pr].length; pc++) {
+                if (pattern[pr][pc] !== '.') {
+                    usedPositions.add(`${offsetR + pr},${offsetC + pc}`);
+                }
+            }
+        }
+
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                if (gridRows[r][c] !== '.' && !usedPositions.has(`${r},${c}`)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function renderOutput() {
+        const output = document.getElementById('crafting-output');
+        const recipe = matchRecipe();
+
+        if (recipe) {
+            const mat = MATERIALS[recipe.result.id];
+            output.innerHTML = `
+                <div class="text-center">
+                    <div class="text-2xl">${mat.icon}</div>
+                    <div class="text-[10px] font-bold text-emerald-700">×${recipe.result.count}</div>
+                </div>
+            `;
+            output.className = 'w-16 h-16 bg-emerald-100 rounded-lg flex items-center justify-center border-2 border-emerald-400 cursor-pointer hover:bg-emerald-200 transition';
+        } else {
+            const hasItems = craftingSlots.some(s => s !== null);
+            output.innerHTML = hasItems
+                ? '<span class="text-stone-500 text-xs">无配方</span>'
+                : '<span class="text-stone-400 text-xs">结果</span>';
+            output.className = 'w-16 h-16 bg-stone-200 rounded-lg flex items-center justify-center border-2 border-stone-400 cursor-pointer transition';
+        }
+    }
+
+    // 执行合成
+    async function craftItem() {
+        const recipe = matchRecipe();
+        if (!recipe) {
+            showToast('当前摆放无匹配配方', 'warning');
+            return;
+        }
+
+        const inv = getStudentInventory();
+
+        // 检查材料是否充足（合成台中的材料需要从背包扣除）
+        const materialCounts = {};
+        for (const slot of craftingSlots) {
+            if (slot) materialCounts[slot] = (materialCounts[slot] || 0) + 1;
+        }
+
+        for (const [matId, needed] of Object.entries(materialCounts)) {
+            if ((inv[matId] || 0) < needed) {
+                showToast(`${MATERIALS[matId].name} 不足！`, 'warning');
+                return;
+            }
+        }
+
+        // 扣除材料
+        for (const [matId, needed] of Object.entries(materialCounts)) {
+            inv[matId] -= needed;
+            if (inv[matId] <= 0) delete inv[matId];
+        }
+
+        // 添加产物
+        const resultId = recipe.result.id;
+        inv[resultId] = (inv[resultId] || 0) + recipe.result.count;
+
+        // 清空合成台
+        craftingSlots = Array(9).fill(null);
+
+        // 保存
+        await saveInventory();
+        renderCraftingGrid();
+        renderInventory();
+        renderRecipeBook();
+
+        const mat = MATERIALS[resultId];
+        showToast(`合成成功！获得 ${mat.icon} ${mat.name} ×${recipe.result.count}`, 'success');
+
+        // 如果是高级物品，放烟花
+        if (MATERIALS[resultId].tier >= 2) {
+            triggerConfetti();
+        }
+    }
+
+    // 渲染配方书
+    function renderRecipeBook() {
+        const inv = getStudentInventory();
+        const book = document.getElementById('recipe-book');
+
+        book.innerHTML = RECIPES.map(recipe => {
+            // 检查是否有足够材料
+            const needed = {};
+            for (const row of recipe.pattern) {
+                for (const ch of row) {
+                    if (ch !== '.') {
+                        const matId = recipe.key[ch];
+                        needed[matId] = (needed[matId] || 0) + 1;
+                    }
+                }
+            }
+            let canCraft = true;
+            for (const [matId, count] of Object.entries(needed)) {
+                if ((inv[matId] || 0) < count) { canCraft = false; break; }
+            }
+
+            const resultMat = MATERIALS[recipe.result.id];
+            // 显示配方需要的材料
+            const neededStr = Object.entries(needed).map(([mid, cnt]) => {
+                const m = MATERIALS[mid];
+                const have = inv[mid] || 0;
+                return `<span class="${have >= cnt ? 'text-emerald-600' : 'text-red-400'}">${m.icon}×${cnt}</span>`;
+            }).join(' ');
+
+            return `
+                <div class="p-3 rounded-xl border-2 ${canCraft ? 'border-emerald-200 bg-emerald-50' : 'border-stone-200 bg-stone-50'} text-center cursor-pointer hover:shadow-md transition"
+                     onclick="autoFillRecipe(${RECIPES.indexOf(recipe)})"
+                     title="点击自动放入合成台">
+                    <div class="text-2xl">${resultMat.icon}</div>
+                    <div class="text-xs font-bold ${canCraft ? 'text-emerald-700' : 'text-stone-500'}">${recipe.name}</div>
+                    <div class="text-[10px] mt-1">${neededStr}</div>
+                    <div class="text-[10px] font-bold ${canCraft ? 'text-emerald-500' : 'text-stone-400'}">→ ${resultMat.name} ×${recipe.result.count}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // 一键填充配方到合成台
+    function autoFillRecipe(recipeIdx) {
+        const recipe = RECIPES[recipeIdx];
+        const inv = getStudentInventory();
+
+        // 先检查材料是否足够
+        const needed = {};
+        for (const row of recipe.pattern) {
+            for (const ch of row) {
+                if (ch !== '.') {
+                    const matId = recipe.key[ch];
+                    needed[matId] = (needed[matId] || 0) + 1;
+                }
+            }
+        }
+        for (const [matId, count] of Object.entries(needed)) {
+            if ((inv[matId] || 0) < count) {
+                showToast(`${MATERIALS[matId].name} 不足，需要 ${count} 个`, 'warning');
+                return;
+            }
+        }
+
+        // 清空合成台
+        craftingSlots = Array(9).fill(null);
+
+        // 将配方放到左上角
+        for (let r = 0; r < recipe.pattern.length; r++) {
+            for (let c = 0; c < recipe.pattern[r].length; c++) {
+                const ch = recipe.pattern[r][c];
+                if (ch !== '.') {
+                    craftingSlots[r * 3 + c] = recipe.key[ch];
+                }
+            }
+        }
+
+        renderCraftingGrid();
+        renderInventory();
+        showToast('配方已放入合成台，点击结果合成', 'info');
     }
 
     // --- Teacher Dashboard ---
@@ -1466,7 +2021,8 @@
             name,
             avatar,
             sentences: en && cn ? [{ en, cn }] : [{ en: '', cn: '' }],
-            stats: { accuracy: 0, time: 0, streak: 0 }
+            stats: { accuracy: 0, time: 0, streak: 0 },
+            inventory: {}
         };
 
         // 先保存到云端
