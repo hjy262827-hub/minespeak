@@ -722,6 +722,7 @@
             ws.onmessage = (event) => {
                 try {
                     const msg = JSON.parse(event.data);
+                    console.log('[讯飞评测] 收到消息 code:', msg.code, 'status:', msg.data?.status, 'data:', msg.data?.data?.substring(0, 200));
                     if (msg.code !== 0) {
                         if (!resultReceived) {
                             resultReceived = true;
@@ -734,15 +735,19 @@
 
                     // 解析评测结果
                     const data = msg.data;
-                    if (data && data.status === 2) {
-                        // 最终结果
+                    // 讯飞流式版：status=1 是中间结果，status=2 是最终结果
+                    // 有些情况下最终结果 status 可能是 2，但如果只有中间结果，也接受
+                    if (data && (data.status === 2 || data.status === 1)) {
                         const result = parseXfyunResult(data, referenceText);
-                        if (result && !resultReceived) {
-                            resultReceived = true;
+                        if (result && result.pronunciation > 0) {
+                            // 始终保存最新且有分数的结果
                             finalResult = result;
-                            clearTimeout(timeout);
-                            ws.close();
-                            resolve(finalResult);
+                            if (data.status === 2 && !resultReceived) {
+                                resultReceived = true;
+                                clearTimeout(timeout);
+                                ws.close();
+                                resolve(finalResult);
+                            }
                         }
                     }
                 } catch (e) {
@@ -782,6 +787,7 @@
 
             // Base64 解码 → XML
             const xmlStr = atob(rawData);
+            console.log('[讯飞评测] XML:', xmlStr.substring(0, 500));
 
             // 用正则提取分数（XML 属性都在 read_sentence 标签上）
             const getScore = (name) => {
@@ -796,6 +802,8 @@
             let integrityScore = getScore('integrity_score');
             let standardScore = getScore('standard_score');
 
+            console.log('[讯飞评测] 原始分数 - total:', totalScore, 'accuracy:', accuracyScore, 'fluency:', fluencyScore, 'integrity:', integrityScore);
+
             // 检查 is_rejected
             const isRejected = xmlStr.includes('is_rejected="true"');
             if (isRejected) {
@@ -809,11 +817,30 @@
             const recognizedText = words.join(' ');
 
             // 分数归一化到 0-100
-            const norm = (v) => Math.round(Math.min(100, Math.max(0, v)));
-            totalScore = norm(totalScore);
-            accuracyScore = norm(accuracyScore);
-            fluencyScore = norm(fluencyScore);
-            integrityScore = norm(integrityScore || 100);
+            // 讯飞部分版本返回 0-5 的小数，需要 *20；其他返回 0-100
+            const norm = (v) => {
+                if (v <= 0) return 0;
+                // 如果所有分数都 <= 10，说明是 0-5 分制，需要放大
+                return Math.round(Math.min(100, Math.max(0, v)));
+            };
+
+            // 检测是否是 0-5 分制（所有非零分数都 <= 5）
+            const allScores = [totalScore, accuracyScore, fluencyScore, integrityScore].filter(s => s > 0);
+            const isSmallScale = allScores.length > 0 && allScores.every(s => s <= 5);
+
+            if (isSmallScale) {
+                totalScore = Math.round(totalScore * 20);
+                accuracyScore = Math.round(accuracyScore * 20);
+                fluencyScore = Math.round(fluencyScore * 20);
+                integrityScore = Math.round((integrityScore || 5) * 20);
+            } else {
+                totalScore = norm(totalScore);
+                accuracyScore = norm(accuracyScore);
+                fluencyScore = norm(fluencyScore);
+                integrityScore = norm(integrityScore || 100);
+            }
+
+            console.log('[讯飞评测] 转换后分数 - total:', totalScore, 'accuracy:', accuracyScore, 'fluency:', fluencyScore);
 
             return {
                 pronunciation: totalScore || Math.round((accuracyScore + fluencyScore) / 2),
@@ -1150,6 +1177,15 @@
     // --- TTS: Google Translate 自然美式发音 ---
     let audioPlayer = null;
 
+    // 预加载 voices（手机端需要在用户交互中触发）
+    let ttsVoicesLoaded = false;
+    function preloadVoices() {
+        if (ttsVoicesLoaded) return;
+        const voices = speechSynthesis.getVoices();
+        if (voices.length > 0) ttsVoicesLoaded = true;
+    }
+    speechSynthesis.onvoiceschanged = () => { ttsVoicesLoaded = true; };
+
     function playAudio() {
         const text = document.getElementById('practice-sentence').textContent;
         if (!text) return;
@@ -1161,38 +1197,54 @@
         }
         window.speechSynthesis.cancel();
 
-        // Use Google Translate TTS for natural-sounding American English
-        // This produces much better audio than browser SpeechSynthesis
+        // 检测是否是移动端
+        const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            // 手机端：直接用 SpeechSynthesis，Google TTS 在移动端容易失败
+            speakWithSynthesis(text);
+            return;
+        }
+
+        // 桌面端：尝试 Google TTS，失败则 fallback 到 SpeechSynthesis
         const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=en-US&client=tw-ob`;
 
         audioPlayer = new Audio(url);
         audioPlayer.playbackRate = appState.speechRate;
         audioPlayer.play().catch(() => {
-            // Fallback: if Google TTS fails (e.g. blocked by CORS/network),
-            // use browser SpeechSynthesis with best available voice
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = appState.speechRate;
-            utterance.pitch = 1.0;
-            utterance.volume = 1.0;
-
-            // Pick the most natural-sounding English voice
-            const voices = speechSynthesis.getVoices();
-            const preferred = voices.find(v =>
-                v.lang === 'en-US' && v.name.includes('Samantha')
-            ) || voices.find(v =>
-                v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Natural'))
-            ) || voices.find(v =>
-                v.lang.startsWith('en-US')
-            ) || voices.find(v =>
-                v.lang.startsWith('en')
-            );
-            if (preferred) utterance.voice = preferred;
-
-            speechSynthesis.speak(utterance);
+            speakWithSynthesis(text);
         });
 
         showToast('🔊 正在播放标准美式发音...', 'info');
+    }
+
+    function speakWithSynthesis(text) {
+        // 确保 voices 已加载
+        preloadVoices();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = appState.speechRate;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        const voices = speechSynthesis.getVoices();
+        const preferred = voices.find(v =>
+            v.lang === 'en-US' && v.name.includes('Samantha')
+        ) || voices.find(v =>
+            v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Natural'))
+        ) || voices.find(v =>
+            v.lang.startsWith('en-US')
+        ) || voices.find(v =>
+            v.lang.startsWith('en')
+        );
+        if (preferred) utterance.voice = preferred;
+
+        // 手机 Safari 需要 resume speechSynthesis（有时会暂停）
+        if (speechSynthesis.paused) speechSynthesis.resume();
+
+        speechSynthesis.speak(utterance);
+        showToast('🔊 正在播放发音...', 'info');
     }
 
     // --- Real Recording with AI Evaluation ---
