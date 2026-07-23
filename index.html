@@ -79,6 +79,109 @@
         .config-panel {
             transition: all 0.3s ease;
         }
+
+        /* 单词卡片样式 */
+        .word-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 14px;
+            margin: 4px 5px;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            user-select: none;
+        }
+        .word-card:hover {
+            border-color: #818cf8;
+            background: #eef2ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+        }
+        .word-card:active {
+            transform: scale(0.95);
+        }
+        .word-card .word-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+            letter-spacing: 0.02em;
+        }
+        .word-card .word-icon {
+            margin-left: 6px;
+            font-size: 0.75rem;
+            color: #818cf8;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .word-card:hover .word-icon {
+            opacity: 1;
+        }
+
+        /* 单词悬停弹窗 */
+        .word-tooltip {
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 100;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .word-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #1e293b;
+        }
+        .word-card:hover .word-tooltip {
+            opacity: 1;
+        }
+        .word-tooltip .phonetic {
+            color: #a5b4fc;
+            font-size: 0.75rem;
+        }
+        .word-tooltip .meaning {
+            color: #cbd5e1;
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+
+        /* 句子全读按钮样式 */
+        .sentence-full-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            background: #6366f1;
+            color: #fff;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            margin-bottom: 12px;
+        }
+        .sentence-full-btn:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="text-slate-700 flex flex-col min-h-screen">
@@ -177,17 +280,20 @@
 
                 <div class="p-8 text-center">
                     <!-- English Sentence -->
-                    <div class="mb-8">
-                        <p id="practice-sentence" class="text-4xl md:text-5xl font-cartoon text-slate-800 leading-tight min-h-[80px] flex items-center justify-center"></p>
+                    <div class="mb-6">
+                        <!-- 整句播放按钮 -->
+                        <button onclick="playAudio()" class="sentence-full-btn mx-auto" title="播放整句">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            </svg>
+                            播放整句
+                        </button>
+                        <!-- 单词卡片区域 -->
+                        <div id="word-cards-container" class="flex flex-wrap justify-center items-center min-h-[60px] py-2"></div>
                     </div>
 
                     <!-- Audio Controls -->
-                    <div class="flex justify-center space-x-6 mb-8">
-                        <button onclick="playAudio()" class="w-16 h-16 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 rounded-full flex items-center justify-center transition btn-press" title="播放标准发音">
-                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                            </svg>
-                        </button>
+                    <div class="flex justify-center space-x-6 mb-6">
                         <button id="mic-btn" onclick="toggleRecording()" class="w-16 h-16 bg-red-100 hover:bg-red-200 text-red-600 rounded-full flex items-center justify-center transition btn-press relative" title="AI 口语测评">
                             <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -508,6 +614,7 @@
         role: null,
         currentStudentId: null,
         currentSentenceIndex: 0,
+        currentSentenceText: '',
         students: [],
         tempPronunciationScore: null,
         tempPronunciationDetail: null,
@@ -1144,6 +1251,130 @@
     }
 
     // --- Student Practice ---
+
+    // --- 单词词典（音标 + 中文）---
+    const WORD_DICT = {
+        // 常见动词
+        "am": { phonetic: "/æm/", meaning: "是" }, "is": { phonetic: "/ɪz/", meaning: "是" },
+        "are": { phonetic: "/ɑːr/", meaning: "是" }, "was": { phonetic: "/wʌz/", meaning: "是(过去)" },
+        "were": { phonetic: "/wɜːr/", meaning: "是(过去)" }, "be": { phonetic: "/biː/", meaning: "是" },
+        "have": { phonetic: "/hæv/", meaning: "有" }, "has": { phonetic: "/hæz/", meaning: "有" },
+        "had": { phonetic: "/hæd/", meaning: "有(过去)" }, "do": { phonetic: "/duː/", meaning: "做" },
+        "does": { phonetic: "/dʌz/", meaning: "做" }, "did": { phonetic: "/dɪd/", meaning: "做(过去)" },
+        "go": { phonetic: "/ɡoʊ/", meaning: "去" }, "went": { phonetic: "/wɛnt/", meaning: "去(过去)" },
+        "come": { phonetic: "/kʌm/", meaning: "来" }, "came": { phonetic: "/keɪm/", meaning: "来(过去)" },
+        "make": { phonetic: "/meɪk/", meaning: "做，制造" }, "made": { phonetic: "/meɪd/", meaning: "做(过去)" },
+        "get": { phonetic: "/ɡɛt/", meaning: "得到" }, "got": { phonetic: "/ɡɒt/", meaning: "得到(过去)" },
+        "see": { phonetic: "/siː/", meaning: "看见" }, "saw": { phonetic: "/sɔː/", meaning: "看见(过去)" },
+        "eat": { phonetic: "/iːt/", meaning: "吃" }, "ate": { phonetic: "/eɪt/", meaning: "吃(过去)" },
+        "drink": { phonetic: "/drɪŋk/", meaning: "喝" }, "like": { phonetic: "/laɪk/", meaning: "喜欢" },
+        "love": { phonetic: "/lʌv/", meaning: "爱" }, "want": { phonetic: "/wɒnt/", meaning: "想要" },
+        "need": { phonetic: "/niːd/", meaning: "需要" }, "can": { phonetic: "/kæn/", meaning: "能" },
+        "will": { phonetic: "/wɪl/", meaning: "将会" }, "would": { phonetic: "/wʊd/", meaning: "会" },
+        "could": { phonetic: "/kʊd/", meaning: "可以" }, "should": { phonetic: "/ʃʊd/", meaning: "应该" },
+        "say": { phonetic: "/seɪ/", meaning: "说" }, "said": { phonetic: "/sɛd/", meaning: "说(过去)" },
+        "tell": { phonetic: "/tɛl/", meaning: "告诉" }, "know": { phonetic: "/noʊ/", meaning: "知道" },
+        "think": { phonetic: "/θɪŋk/", meaning: "想，认为" }, "thought": { phonetic: "/θɔːt/", meaning: "想(过去)" },
+        "take": { phonetic: "/teɪk/", meaning: "拿，带" }, "took": { phonetic: "/tʊk/", meaning: "拿(过去)" },
+        "give": { phonetic: "/ɡɪv/", meaning: "给" }, "use": { phonetic: "/juːz/", meaning: "使用" },
+        "find": { phonetic: "/faɪnd/", meaning: "找到" }, "work": { phonetic: "/wɜːrk/", meaning: "工作" },
+        "play": { phonetic: "/pleɪ/", meaning: "玩" }, "run": { phonetic: "/rʌn/", meaning: "跑" },
+        "walk": { phonetic: "/wɔːk/", meaning: "走" }, "talk": { phonetic: "/tɔːk/", meaning: "说话" },
+        "help": { phonetic: "/hɛlp/", meaning: "帮助" }, "call": { phonetic: "/kɔːl/", meaning: "叫，打电话" },
+        "try": { phonetic: "/traɪ/", meaning: "尝试" }, "ask": { phonetic: "/æsk/", meaning: "问" },
+        "look": { phonetic: "/lʊk/", meaning: "看" }, "feel": { phonetic: "/fiːl/", meaning: "感觉" },
+        "put": { phonetic: "/pʊt/", meaning: "放" }, "read": { phonetic: "/riːd/", meaning: "阅读" },
+        "write": { phonetic: "/raɪt/", meaning: "写" }, "live": { phonetic: "/lɪv/", meaning: "住，生活" },
+        "speak": { phonetic: "/spiːk/", meaning: "说(语言)" }, "listen": { phonetic: "/ˈlɪsən/", meaning: "听" },
+        "learn": { phonetic: "/lɜːrn/", meaning: "学习" }, "teach": { phonetic: "/tiːtʃ/", meaning: "教" },
+        "buy": { phonetic: "/baɪ/", meaning: "买" }, "sell": { phonetic: "/sɛl/", meaning: "卖" },
+        "open": { phonetic: "/ˈoʊpən/", meaning: "打开" }, "close": { phonetic: "/kloʊz/", meaning: "关闭" },
+        "start": { phonetic: "/stɑːrt/", meaning: "开始" }, "stop": { phonetic: "/stɒp/", meaning: "停止" },
+        "bring": { phonetic: "/brɪŋ/", meaning: "带来" }, "leave": { phonetic: "/liːv/", meaning: "离开" },
+        "meet": { phonetic: "/miːt/", meaning: "遇见" }, "sit": { phonetic: "/sɪt/", meaning: "坐" },
+        "stand": { phonetic: "/stænd/", meaning: "站" },
+
+        // 常见名词
+        "time": { phonetic: "/taɪm/", meaning: "时间" }, "day": { phonetic: "/deɪ/", meaning: "天，日" },
+        "week": { phonetic: "/wiːk/", meaning: "周" }, "month": { phonetic: "/mʌnθ/", meaning: "月" },
+        "year": { phonetic: "/jɪr/", meaning: "年" }, "today": { phonetic: "/təˈdeɪ/", meaning: "今天" },
+        "school": { phonetic: "/skuːl/", meaning: "学校" }, "home": { phonetic: "/hoʊm/", meaning: "家" },
+        "work": { phonetic: "/wɜːrk/", meaning: "工作" }, "book": { phonetic: "/bʊk/", meaning: "书" },
+        "phone": { phonetic: "/foʊn/", meaning: "电话" }, "car": { phonetic: "/kɑːr/", meaning: "汽车" },
+        "dog": { phonetic: "/dɔːɡ/", meaning: "狗" }, "cat": { phonetic: "/kæt/", meaning: "猫" },
+        "friend": { phonetic: "/frɛnd/", meaning: "朋友" }, "family": { phonetic: "/ˈfæməli/", meaning: "家庭" },
+        "people": { phonetic: "/ˈpiːpəl/", meaning: "人们" }, "child": { phonetic: "/tʃaɪld/", meaning: "孩子" },
+        "house": { phonetic: "/haʊs/", meaning: "房子" }, "room": { phonetic: "/ruːm/", meaning: "房间" },
+        "door": { phonetic: "/dɔːr/", meaning: "门" }, "window": { phonetic: "/ˈwɪndoʊ/", meaning: "窗户" },
+        "world": { phonetic: "/wɜːrld/", meaning: "世界" }, "life": { phonetic: "/laɪf/", meaning: "生活" },
+        "hand": { phonetic: "/hænd/", meaning: "手" }, "eye": { phonetic: "/aɪ/", meaning: "眼睛" },
+        "name": { phonetic: "/neɪm/", meaning: "名字" }, "place": { phonetic: "/pleɪs/", meaning: "地方" },
+        "money": { phonetic: "/ˈmʌni/", meaning: "钱" }, "water": { phonetic: "/ˈwɔːtər/", meaning: "水" },
+        "food": { phonetic: "/fuːd/", meaning: "食物" }, "way": { phonetic: "/weɪ/", meaning: "路，方式" },
+        "morning": { phonetic: "/ˈmɔːrnɪŋ/", meaning: "早上" }, "night": { phonetic: "/naɪt/", meaning: "晚上" },
+        "music": { phonetic: "/ˈmjuːzɪk/", meaning: "音乐" }, "movie": { phonetic: "/ˈmuːvi/", meaning: "电影" },
+        "air": { phonetic: "/ɛr/", meaning: "空气" }, "sun": { phonetic: "/sʌn/", meaning: "太阳" },
+        "bed": { phonetic: "/bɛd/", meaning: "床" }, "tree": { phonetic: "/triː/", meaning: "树" },
+        "game": { phonetic: "/ɡeɪm/", meaning: "游戏" }, "store": { phonetic: "/stɔːr/", meaning: "商店" },
+        "city": { phonetic: "/ˈsɪti/", meaning: "城市" }, "park": { phonetic: "/pɑːrk/", meaning: "公园" },
+
+        // 形容词
+        "good": { phonetic: "/ɡʊd/", meaning: "好的" }, "better": { phonetic: "/ˈbɛtər/", meaning: "更好的" },
+        "best": { phonetic: "/bɛst/", meaning: "最好的" }, "bad": { phonetic: "/bæd/", meaning: "坏的" },
+        "big": { phonetic: "/bɪɡ/", meaning: "大的" }, "small": { phonetic: "/smɔːl/", meaning: "小的" },
+        "new": { phonetic: "/nuː/", meaning: "新的" }, "old": { phonetic: "/oʊld/", meaning: "老的" },
+        "happy": { phonetic: "/ˈhæpi/", meaning: "开心的" }, "sad": { phonetic: "/sæd/", meaning: "悲伤的" },
+        "beautiful": { phonetic: "/ˈbjuːtɪfəl/", meaning: "美丽的" }, "nice": { phonetic: "/naɪs/", meaning: "好的" },
+        "hot": { phonetic: "/hɒt/", meaning: "热的" }, "cold": { phonetic: "/koʊld/", meaning: "冷的" },
+        "long": { phonetic: "/lɔːŋ/", meaning: "长的" }, "short": { phonetic: "/ʃɔːrt/", meaning: "短的" },
+        "high": { phonetic: "/haɪ/", meaning: "高的" }, "hard": { phonetic: "/hɑːrd/", meaning: "难的，硬的" },
+        "easy": { phonetic: "/ˈiːzi/", meaning: "容易的" }, "young": { phonetic: "/jʌŋ/", meaning: "年轻的" },
+        "right": { phonetic: "/raɪt/", meaning: "正确的，右边" }, "wrong": { phonetic: "/rɔːŋ/", meaning: "错误的" },
+        "first": { phonetic: "/fɜːrst/", meaning: "第一" }, "last": { phonetic: "/læst/", meaning: "最后的" },
+        "much": { phonetic: "/mʌtʃ/", meaning: "很多" }, "many": { phonetic: "/ˈmɛni/", meaning: "许多" },
+        "more": { phonetic: "/mɔːr/", meaning: "更多" }, "most": { phonetic: "/moʊst/", meaning: "最多" },
+        "some": { phonetic: "/sʌm/", meaning: "一些" }, "any": { phonetic: "/ˈɛni/", meaning: "任何" },
+        "great": { phonetic: "/ɡreɪt/", meaning: "很棒的" }, "important": { phonetic: "/ɪmˈpɔːrtənt/", meaning: "重要的" },
+        "hungry": { phonetic: "/ˈhʌŋɡri/", meaning: "饿的" }, "tired": { phonetic: "/ˈtaɪərd/", meaning: "累的" },
+
+        // 代词/冠词/介词
+        "I": { phonetic: "/aɪ/", meaning: "我" }, "you": { phonetic: "/juː/", meaning: "你" },
+        "he": { phonetic: "/hiː/", meaning: "他" }, "she": { phonetic: "/ʃiː/", meaning: "她" },
+        "it": { phonetic: "/ɪt/", meaning: "它" }, "we": { phonetic: "/wiː/", meaning: "我们" },
+        "they": { phonetic: "/ðeɪ/", meaning: "他们" }, "me": { phonetic: "/miː/", meaning: "我(宾)" },
+        "him": { phonetic: "/hɪm/", meaning: "他(宾)" }, "her": { phonetic: "/hɜːr/", meaning: "她(宾)" },
+        "us": { phonetic: "/ʌs/", meaning: "我们(宾)" }, "them": { phonetic: "/ðɛm/", meaning: "他们(宾)" },
+        "my": { phonetic: "/maɪ/", meaning: "我的" }, "your": { phonetic: "/jɔːr/", meaning: "你的" },
+        "his": { phonetic: "/hɪz/", meaning: "他的" }, "our": { phonetic: "/aʊər/", meaning: "我们的" },
+        "their": { phonetic: "/ðɛr/", meaning: "他们的" }, "this": { phonetic: "/ðɪs/", meaning: "这个" },
+        "that": { phonetic: "/ðæt/", meaning: "那个" }, "these": { phonetic: "/ðiːz/", meaning: "这些" },
+        "those": { phonetic: "/ðoʊz/", meaning: "那些" }, "here": { phonetic: "/hɪr/", meaning: "这里" },
+        "there": { phonetic: "/ðɛr/", meaning: "那里" }, "who": { phonetic: "/huː/", meaning: "谁" },
+        "what": { phonetic: "/wʌt/", meaning: "什么" }, "where": { phonetic: "/wɛr/", meaning: "哪里" },
+        "when": { phonetic: "/wɛn/", meaning: "什么时候" }, "why": { phonetic: "/waɪ/", meaning: "为什么" },
+        "how": { phonetic: "/haʊ/", meaning: "怎样" }, "the": { phonetic: "/ðə/", meaning: "这，那" },
+        "a": { phonetic: "/ə/", meaning: "一个" }, "an": { phonetic: "/æn/", meaning: "一个" },
+        "in": { phonetic: "/ɪn/", meaning: "在…里" }, "on": { phonetic: "/ɒn/", meaning: "在…上" },
+        "at": { phonetic: "/æt/", meaning: "在" }, "to": { phonetic: "/tuː/", meaning: "到" },
+        "for": { phonetic: "/fɔːr/", meaning: "为了" }, "with": { phonetic: "/wɪð/", meaning: "和，用" },
+        "from": { phonetic: "/frʌm/", meaning: "从" }, "of": { phonetic: "/ʌv/", meaning: "…的" },
+        "about": { phonetic: "/əˈbaʊt/", meaning: "关于" }, "by": { phonetic: "/baɪ/", meaning: "由" },
+        "and": { phonetic: "/ænd/", meaning: "和" }, "or": { phonetic: "/ɔːr/", meaning: "或者" },
+        "but": { phonetic: "/bʌt/", meaning: "但是" }, "so": { phonetic: "/soʊ/", meaning: "所以" },
+        "because": { phonetic: "/bɪˈkɔːz/", meaning: "因为" }, "if": { phonetic: "/ɪf/", meaning: "如果" },
+        "very": { phonetic: "/ˈvɛri/", meaning: "非常" }, "well": { phonetic: "/wɛl/", meaning: "好地" },
+        "also": { phonetic: "/ˈɔːlsoʊ/", meaning: "也" }, "just": { phonetic: "/dʒʌst/", meaning: "刚刚" },
+        "now": { phonetic: "/naʊ/", meaning: "现在" }, "then": { phonetic: "/ðɛn/", meaning: "然后" },
+        "always": { phonetic: "/ˈɔːlweɪz/", meaning: "总是" }, "never": { phonetic: "/ˈnɛvər/", meaning: "从不" },
+        "often": { phonetic: "/ˈɔːfən/", meaning: "经常" }, "usually": { phonetic: "/ˈjuːʒuəli/", meaning: "通常" },
+        "really": { phonetic: "/ˈrɪəli/", meaning: "真的" }, "too": { phonetic: "/tuː/", meaning: "太，也" },
+    };
+
+    function getWordInfo(word) {
+        const clean = word.toLowerCase().replace(/[^a-z']/g, '');
+        return WORD_DICT[clean] || null;
+    }
+
     function renderCurrentSentence() {
         const student = appState.students.find(s => s.id === appState.currentStudentId);
         if (!student) return;
@@ -1165,12 +1396,69 @@
         }
 
         const sentence = student.sentences[appState.currentSentenceIndex];
-        document.getElementById('practice-sentence').textContent = sentence.en;
+        appState.currentSentenceText = sentence.en;
+
+        // 渲染单词卡片
+        const words = sentence.en.replace(/[.,!?;:'"]/g, '').split(/\s+/).filter(w => w.length > 0);
+        const container = document.getElementById('word-cards-container');
+        let html = '';
+        words.forEach(word => {
+            const info = getWordInfo(word);
+            if (info) {
+                html += `<div class="word-card" onclick="playWord('${word.replace(/'/g, "\\'")}')">
+                    <span class="word-tooltip"><span class="phonetic">${info.phonetic}</span><br><span class="meaning">${info.meaning}</span></span>
+                    <span class="word-text">${word}</span>
+                    <span class="word-icon">🔊</span>
+                </div>`;
+            } else {
+                html += `<div class="word-card" onclick="playWord('${word.replace(/'/g, "\\'")}')">
+                    <span class="word-tooltip"><span class="meaning">暂无音标</span></span>
+                    <span class="word-text">${word}</span>
+                    <span class="word-icon">🔊</span>
+                </div>`;
+            }
+        });
+        container.innerHTML = html;
+
         document.getElementById('translation-input').value = '';
-        document.getElementById('pronunciation-hint').textContent = '点击麦克风开始跟读';
+        document.getElementById('pronunciation-hint').textContent = '点击单词听发音 · 点击麦克风跟读评测';
         document.getElementById('pronunciation-hint').className = 'text-sm text-slate-500 mb-4 h-5';
         appState.tempPronunciationScore = null;
         appState.tempPronunciationDetail = null;
+    }
+
+    // --- 单词发音 ---
+    function playWord(word) {
+        if (!word) return;
+        window.speechSynthesis.cancel();
+        if (audioPlayer) { audioPlayer.pause(); audioPlayer = null; }
+
+        const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent);
+        if (isMobile) {
+            speakWordWithSynthesis(word);
+        } else {
+            const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(word)}&tl=en-US&client=tw-ob`;
+            audioPlayer = new Audio(url);
+            audioPlayer.playbackRate = appState.speechRate;
+            audioPlayer.play().catch(() => { speakWordWithSynthesis(word); });
+        }
+    }
+
+    function speakWordWithSynthesis(word) {
+        preloadVoices();
+        const utterance = new SpeechSynthesisUtterance(word);
+        utterance.lang = 'en-US';
+        utterance.rate = appState.speechRate;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        const voices = speechSynthesis.getVoices();
+        const preferred = voices.find(v => v.lang === 'en-US' && v.name.includes('Samantha'))
+            || voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Natural')))
+            || voices.find(v => v.lang.startsWith('en-US'))
+            || voices.find(v => v.lang.startsWith('en'));
+        if (preferred) utterance.voice = preferred;
+        if (speechSynthesis.paused) speechSynthesis.resume();
+        speechSynthesis.speak(utterance);
     }
 
     // --- 语速调节 ---
@@ -1194,7 +1482,7 @@
     speechSynthesis.onvoiceschanged = () => { ttsVoicesLoaded = true; };
 
     function playAudio() {
-        const text = document.getElementById('practice-sentence').textContent;
+        const text = appState.currentSentenceText;
         if (!text) return;
 
         // Stop any previous playback
@@ -1267,7 +1555,7 @@
                 hint.textContent = '正在 AI 评估发音...';
                 hint.className = 'text-sm text-indigo-500 font-bold mb-4 h-5 animate-pulse';
 
-                const sentence = document.getElementById('practice-sentence').textContent;
+                const sentence = appState.currentSentenceText;
 
                 // 同时生成一个 WAV blob 供离线模式使用
                 const wavBlob = pcmToWav(pcmData, 16000, 1, 16);
